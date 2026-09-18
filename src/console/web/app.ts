@@ -17,7 +17,7 @@ interface Snapshot {
     title: string;
     owner: string;
     outcome: Outcome;
-    items: Array<{ ref: string; reason: string; outcome: Outcome }>;
+    items: Array<{ ref: string; reason: string; outcome: Outcome; state: string; owner: string; source?: string; updatedAt?: string; nextAction?: string; evidenceRefs?: string[] }>;
   }>;
   actions: Array<{ id: string; title: string; owner: string; system: string; workflowId: string; success: string; founderGate: boolean; _pref?: Pref }>;
   inbox: Array<{ id: string; title: string; kind: string; status: string; subjectRef: string; notes: string; impact?: string }>;
@@ -33,6 +33,46 @@ interface Snapshot {
   unauthorizedBusinessWrites?: number;
   authorisedGovernedDispatchCount?: number;
   writeScope?: string;
+}
+
+interface AuditView { id: string; at: string; actor: string; type: string; summary: string; correlationId?: string }
+interface LaneDetailItem {
+  ref: string;
+  lane: string;
+  state: string;
+  owner: string;
+  outcome: string;
+  reason: string;
+  source?: string;
+  updatedAt?: string;
+  evidenceRefs?: string[];
+  nextAction?: string;
+  auditHistory?: AuditView[];
+  controls: {
+    canComment: boolean;
+    canRequestEvidence: boolean;
+    canRetry: boolean;
+    canAcknowledge: boolean;
+    canResolve: boolean;
+    decisionId?: string | null;
+  };
+}
+interface DetailView {
+  kind: string;
+  id: string;
+  title?: string;
+  owner?: string;
+  state?: string;
+  blockerReason?: string | null;
+  source?: string;
+  items?: LaneDetailItem[];
+  auditHistory?: AuditView[];
+  audit?: AuditView[];
+  evidence?: unknown;
+  request?: string;
+  impact?: string;
+  expiry?: string;
+  nextAction?: string;
 }
 
 let csrf = "";
@@ -82,7 +122,99 @@ function show(view: "login" | "app"): void {
 function openDrawer(html: string): void {
   const drawer = document.querySelector("#drawer") as HTMLDialogElement;
   (document.querySelector("#drawer-body") as HTMLElement).innerHTML = html;
-  drawer.showModal();
+  if (!drawer.open) drawer.showModal();
+}
+
+function auditList(items: AuditView[] = []): string {
+  if (!items.length) return `<p class="muted">No founder interactions recorded yet.</p>`;
+  return `<ol class="audit-list">${items.map((item) => `<li><strong>${escape(item.type.replaceAll("_", " "))}</strong><span>${escape(item.actor)} · ${escape(new Date(item.at).toLocaleString())}</span><p>${escape(item.summary)}</p></li>`).join("")}</ol>`;
+}
+
+function laneItemHtml(item: LaneDetailItem): string {
+  const controls = item.controls;
+  const decision = controls.decisionId
+    ? `<button type="button" data-open-decision="${escape(controls.decisionId)}">Open founder decision</button>`
+    : "";
+  return `<article class="detail-item ${escape(item.outcome)}">
+    <div class="detail-head"><div><p class="eyebrow">${escape(item.ref)}</p><h3>${escape(item.state)}</h3></div>${badge(item.outcome)}</div>
+    <dl class="detail-grid">
+      <div><dt>Owner</dt><dd>${escape(item.owner)}</dd></div>
+      <div><dt>Source</dt><dd>${escape(item.source ?? "control_plane")}</dd></div>
+      <div><dt>Updated</dt><dd>${escape(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Unknown")}</dd></div>
+      <div><dt>Next action</dt><dd>${escape(item.nextAction ?? "Inspect")}</dd></div>
+    </dl>
+    <h4>Blocker / current reason</h4><p>${escape(item.reason)}</p>
+    <h4>Evidence</h4><p>${escape((item.evidenceRefs ?? []).join(", ") || "No evidence reference recorded")}</p>
+    <label for="note-${escape(item.ref)}">Founder instruction or comment</label>
+    <textarea id="note-${escape(item.ref)}" data-lane-note="${escape(item.ref)}" rows="3" placeholder="Add context, an instruction, or the evidence you expect."></textarea>
+    <div class="actions detail-actions">
+      ${controls.canComment ? `<button type="button" data-lane-act="add-instruction" data-lane="${escape(item.lane)}" data-ref="${escape(item.ref)}">Add instruction</button>` : ""}
+      ${controls.canRequestEvidence ? `<button type="button" class="ghost" data-lane-act="request-evidence" data-lane="${escape(item.lane)}" data-ref="${escape(item.ref)}">Request evidence</button>` : ""}
+      ${controls.canRetry ? `<button type="button" class="ghost" data-lane-act="retry" data-lane="${escape(item.lane)}" data-ref="${escape(item.ref)}">Retry permitted step</button>` : ""}
+      ${controls.canAcknowledge ? `<button type="button" class="ghost" data-lane-act="acknowledge" data-lane="${escape(item.lane)}" data-ref="${escape(item.ref)}">Acknowledge</button>` : ""}
+      ${controls.canResolve ? `<button type="button" class="ghost" data-lane-act="resolve" data-lane="${escape(item.lane)}" data-ref="${escape(item.ref)}">Resolve</button>` : ""}
+      ${decision}
+    </div>
+    <details><summary>Audit history (${item.auditHistory?.length ?? 0})</summary>${auditList(item.auditHistory)}</details>
+  </article>`;
+}
+
+function renderDetail(detail: DetailView): string {
+  if (detail.kind === "lane") {
+    return `<header class="drawer-title"><p class="eyebrow">Exception lane</p><h2>${escape(detail.title ?? detail.id)}</h2><p>${badge(detail.state ?? "UNKNOWN")} · ${escape(detail.owner ?? "Unassigned")}</p></header>
+      ${detail.blockerReason ? `<aside class="callout"><strong>Primary blocker</strong><p>${escape(detail.blockerReason)}</p></aside>` : ""}
+      <div class="detail-stack">${(detail.items ?? []).map(laneItemHtml).join("")}</div>`;
+  }
+  if (detail.kind === "decision") {
+    return `<header class="drawer-title"><p class="eyebrow">Founder decision</p><h2>${escape(detail.title ?? detail.id)}</h2><p>${badge(detail.state ?? "UNKNOWN")}</p></header>
+      <p>${escape(detail.request ?? "")}</p><p class="muted">${escape(detail.impact ?? "No provider action occurs from this packet in TEST.")}</p>
+      <div class="actions"><button type="button" data-decide="${escape(detail.id)}" data-act="approve">Approve</button><button type="button" class="danger" data-decide="${escape(detail.id)}" data-act="reject">Reject</button><button type="button" class="ghost" data-decide="${escape(detail.id)}" data-act="request-evidence">Request evidence</button></div>
+      <h3>Audit</h3>${auditList(detail.audit)}`;
+  }
+  return `<header class="drawer-title"><p class="eyebrow">${escape(detail.kind)}</p><h2>${escape(detail.title ?? detail.id)}</h2><p>${badge(detail.state ?? "UNKNOWN")}</p></header><dl class="detail-grid"><div><dt>Owner</dt><dd>${escape(detail.owner ?? "Unknown")}</dd></div><div><dt>Source</dt><dd>${escape(detail.source ?? "Unknown")}</dd></div><div><dt>Next action</dt><dd>${escape(detail.nextAction ?? "None")}</dd></div></dl><pre class="result">${escape(JSON.stringify(detail.evidence ?? detail, null, 2))}</pre>`;
+}
+
+async function openDetail(key: string): Promise<void> {
+  const detail = await api<DetailView>(`/api/detail/${key}`);
+  openDrawer(renderDetail(detail));
+  bindDrawerControls();
+}
+
+function bindDrawerControls(): void {
+  for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>("#drawer [data-lane-act]"))) {
+    button.addEventListener("click", async () => {
+      const ref = button.dataset.ref ?? "";
+      const note = document.querySelector<HTMLTextAreaElement>(`#drawer [data-lane-note="${CSS.escape(ref)}"]`)?.value ?? "";
+      try {
+        const result = await api<{ reason: string }>(`/api/lanes/${button.dataset.lane}/${ref}/${button.dataset.laneAct}`, { method: "POST", body: JSON.stringify({ comment: note }) });
+        (document.querySelector("#result") as HTMLElement).textContent = result.reason;
+        (document.querySelector("#drawer") as HTMLDialogElement).close();
+        await refresh();
+      } catch (error) {
+        (document.querySelector("#drawer-message") as HTMLElement | null)?.remove();
+        const message = document.createElement("p");
+        message.id = "drawer-message";
+        message.className = "error";
+        message.textContent = error instanceof Error ? error.message : String(error);
+        (document.querySelector("#drawer-body") as HTMLElement).prepend(message);
+      }
+    });
+  }
+  for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>("#drawer [data-open-decision]"))) {
+    button.addEventListener("click", () => void openDetail(`decision/${button.dataset.openDecision}`));
+  }
+  bindDecisionButtons("#drawer [data-decide]");
+}
+
+function bindDecisionButtons(selector = "[data-decide]"): void {
+  for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>(selector))) {
+    button.addEventListener("click", async () => {
+      const result = await api<{ ok: boolean; reason?: string; providerCalled: boolean }>(`/api/inbox/${button.dataset.decide}/${button.dataset.act}`, { method: "POST", body: "{}" });
+      (document.querySelector("#result") as HTMLElement).textContent = result.ok ? `Decision recorded. Provider called: ${result.providerCalled}.` : result.reason ?? "Decision failed";
+      (document.querySelector("#drawer") as HTMLDialogElement).close();
+      await refresh();
+    });
+  }
 }
 
 function render(snap: Snapshot): void {
@@ -92,10 +224,11 @@ function render(snap: Snapshot): void {
   (document.querySelector("#overview") as HTMLElement).innerHTML = snap.exceptionFirst
     .map(
       (lane) => `
-      <article class="lane ${lane.outcome}" data-detail="lane/${lane.id}">
-        <h3>${escape(lane.title)}</h3>
+      <article class="lane ${lane.outcome}" data-detail="lane/${lane.id}" tabindex="0" role="button" aria-label="Open ${escape(lane.title)} lane">
+        <div class="lane-top"><h3>${escape(lane.title)}</h3><span class="count">${lane.items.length}</span></div>
         <p>${badge(lane.outcome)} · ${escape(lane.owner)}</p>
         <p>${escape(lane.items[0]?.reason ?? "")}</p>
+        <span class="open-hint">Open controls →</span>
       </article>`,
     )
     .join("");
@@ -155,9 +288,10 @@ function bind(snap: Snapshot): void {
     node.addEventListener("click", (event) => {
       if ((event.target as HTMLElement).closest("button")) return;
       const key = node.dataset.detail ?? "";
-      void api<Record<string, unknown>>(`/api/detail/${key}`).then((detail) => {
-        openDrawer(`<pre class="result">${escape(JSON.stringify(detail, null, 2))}</pre>`);
-      });
+      void openDetail(key);
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void openDetail(node.dataset.detail ?? ""); }
     });
   }
   for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-action]"))) {
@@ -171,18 +305,7 @@ function bind(snap: Snapshot): void {
       await refresh();
     });
   }
-  for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-decide]"))) {
-    button.addEventListener("click", async () => {
-      const result = await api<{ ok: boolean; reason?: string; providerCalled: boolean }>(
-        `/api/inbox/${button.dataset.decide}/${button.dataset.act}`,
-        { method: "POST", body: "{}" },
-      );
-      (document.querySelector("#result") as HTMLElement).textContent = result.ok
-        ? `Decision recorded. Provider called: ${result.providerCalled}.`
-        : result.reason ?? "Decision failed";
-      await refresh();
-    });
-  }
+  bindDecisionButtons("#inbox [data-decide]");
   const prefsBody = document.querySelector("#prefs-body") as HTMLElement;
   prefsBody.innerHTML = (snap.preferences ?? [])
     .map(
@@ -257,6 +380,20 @@ document.querySelector("#command-form")?.addEventListener("submit", (event) => {
       (document.querySelector("#result") as HTMLElement).textContent =
         error instanceof Error ? error.message : String(error);
     });
+});
+
+document.querySelector("#prepare-social")?.addEventListener("click", () => {
+  const button = document.querySelector("#prepare-social") as HTMLButtonElement;
+  button.disabled = true;
+  void api<{ founderFriendlySummary: string; correlationId?: string }>("/api/actions/generate_next_weeks_marketing", { method: "POST", body: "{}" })
+    .then(async (result) => {
+      (document.querySelector("#result") as HTMLElement).textContent = `${result.founderFriendlySummary}\n\nCorrelation ${result.correlationId ?? "not created"}.`;
+      await refresh();
+    })
+    .catch((error: unknown) => {
+      (document.querySelector("#result") as HTMLElement).textContent = error instanceof Error ? error.message : String(error);
+    })
+    .finally(() => { button.disabled = false; });
 });
 
 document.querySelector("#rehearsal-slack")?.addEventListener("click", () => {
