@@ -16,7 +16,7 @@ html_handling = "auto-trailing-slash"
 [[d1_databases]]
 binding = "DB"
 database_name = "tr-founder-console"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "f393b2f3-161b-4241-9a70-bdb2fbd3b707"
 migrations_dir = "migrations"
 
 [vars]
