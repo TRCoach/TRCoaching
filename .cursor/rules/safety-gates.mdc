@@ -1,0 +1,20 @@
+---
+description: Exact safety gates and hard stops for the TR control plane
+alwaysApply: true
+---
+
+# Hard stops
+
+No live Stripe activation/charges/refunds/credits/payment links. No paid spend. No production deletion. No publication. No health/safety judgement. No first-client programme go-live. No material legal/privacy exception. No irreversible account/security changes.
+
+# Fail-closed gates
+
+- Test-mode payment cannot become live Closed Won
+- Missing explicit health consent blocks screening/Ready
+- Ready cannot bypass human evidence
+- Programme assignment blocked without founder approval
+- Publication blocked without exact-final dual PASS (taylorPass + chatgptPass on the same checksum/config)
+- Duplicate event_id/idempotency key is ignored
+- Cancellation refund/credit routes to founder
+
+All connectors are dry-run. State transitions fail closed without required evidence.

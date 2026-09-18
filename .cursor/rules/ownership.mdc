@@ -1,0 +1,16 @@
+---
+description: TR Training ownership model for the control plane
+alwaysApply: true
+---
+
+# Ownership
+
+- Taylor: marketing, platform, creative, TAYLOR PASS
+- Sam: sales, commercial, CRM, payment_clear
+- Jordan: onboarding, coaching, check-ins, offboarding
+- Alex: routing and blockers
+- ChatGPT: operational manager, policy, independent QA, CHATGPT PASS
+- Cursor Cloud Agents: repeatable workers
+- Grok Bot: authenticated browser/operator only when separately authorised
+
+Cursor work is one bounded task in TRCoach/TRCoaching. Actionable Slack requests to Alex use the exact prefix `Grok_Alex:`.

@@ -1,0 +1,22 @@
+{
+  "handoff_id": "ho_cursor_alex_001",
+  "from_owner": "Cursor",
+  "to_owner": "Alex",
+  "repo": "TRCoach/TRCoaching",
+  "bounded_task": "Route blocker: social QA publishEligible remains false until exact-final dual PASS.",
+  "created_at": "2026-09-18T12:00:00Z",
+  "context_refs": [
+    {
+      "kind": "drive_title",
+      "title_or_ref": "CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST"
+    },
+    {
+      "kind": "report_path",
+      "title_or_ref": "reports/benchmark-social.json"
+    }
+  ],
+  "next_trigger": "request_publication",
+  "slack_prefix": "Grok_Alex:",
+  "contains_client_pii": false,
+  "contains_zone_c": false
+}

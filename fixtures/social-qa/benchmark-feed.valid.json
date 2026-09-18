@@ -1,0 +1,29 @@
+{
+  "asset_id": "feed_1080x1350_benchmark",
+  "path": "assets/benchmark/busy-week-feed.jpg",
+  "checksum_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "config_id": "scene-benchmark-v1",
+  "dimensions": { "width": 1080, "height": 1350 },
+  "mime": "image/jpeg",
+  "codec": null,
+  "safe_margins": { "pass": true },
+  "layout_overlap": { "pass": true, "overlaps": [] },
+  "provenance": {
+    "generator": "tr-control-plane/social-render",
+    "source": "code",
+    "external_media": false,
+    "paid_assets": false,
+    "music": false
+  },
+  "aigc": {
+    "used": false,
+    "rationale": "Deterministic SVG/code render. No generative image model."
+  },
+  "audio": "none",
+  "taylor_pass": false,
+  "chatgpt_pass": false,
+  "pass_checksum": null,
+  "pass_config_id": null,
+  "publish_eligible": false,
+  "publication_occurred": false
+}

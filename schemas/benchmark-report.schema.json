@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/benchmark-report.schema.json",
+  "title": "TR bounded benchmark report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_id",
+    "kind",
+    "created_at",
+    "repo",
+    "commands",
+    "assets",
+    "state_model_coverage",
+    "live_integration_gaps",
+    "external_writes",
+    "publication_occurred",
+    "paid_spend",
+    "bounded_task_only"
+  ],
+  "properties": {
+    "report_id": { "type": "string" },
+    "kind": { "type": "string", "const": "social_asset_production_qa" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "repo": { "type": "string", "const": "TRCoach/TRCoaching" },
+    "bounded_task": { "type": "string" },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "result"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string" },
+          "exit_code": { "type": "integer" }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "https://trcoach.local/schemas/social-qa.schema.json" }
+    },
+    "state_model_coverage": {
+      "type": "object",
+      "required": ["states", "transitions"],
+      "properties": {
+        "states": { "type": "integer" },
+        "transitions": { "type": "integer" },
+        "required_fields_present": { "type": "boolean" }
+      }
+    },
+    "live_integration_gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "external_writes": { "type": "integer", "const": 0 },
+    "publication_occurred": { "type": "boolean", "const": false },
+    "paid_spend": { "type": "boolean", "const": false },
+    "bounded_task_only": { "type": "boolean", "const": true }
+  }
+}

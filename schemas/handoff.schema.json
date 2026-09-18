@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/handoff.schema.json",
+  "title": "TR agent handoff",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "handoff_id",
+    "from_owner",
+    "to_owner",
+    "repo",
+    "bounded_task",
+    "created_at",
+    "context_refs",
+    "next_trigger",
+    "contains_client_pii",
+    "contains_zone_c"
+  ],
+  "properties": {
+    "handoff_id": { "type": "string" },
+    "from_owner": { "type": "string" },
+    "to_owner": { "type": "string" },
+    "repo": { "type": "string", "const": "TRCoach/TRCoaching" },
+    "bounded_task": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 240
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "context_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "title_or_ref"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["drive_title", "event_id", "transition_id", "report_path"]
+          },
+          "title_or_ref": { "type": "string" }
+        }
+      }
+    },
+    "next_trigger": { "type": "string" },
+    "slack_prefix": {
+      "type": "string",
+      "description": "Actionable Alex requests must be exactly Grok_Alex:"
+    },
+    "contains_client_pii": { "type": "boolean", "const": false },
+    "contains_zone_c": { "type": "boolean", "const": false }
+  }
+}

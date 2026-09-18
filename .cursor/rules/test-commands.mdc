@@ -1,0 +1,17 @@
+---
+description: Required local and CI test commands
+alwaysApply: true
+---
+
+# Commands
+
+```bash
+npm ci
+npm run build
+npm test
+npm run validate
+npm run benchmark:social
+npm run qa:social
+```
+
+CI runs build, test, and validate with no secrets. `.cursor/environment.json` installs with `npm ci` and starts no long-running service.
