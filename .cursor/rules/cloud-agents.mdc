@@ -1,0 +1,14 @@
+---
+description: Cursor Cloud Agent instructions for TRCoach/TRCoaching
+alwaysApply: true
+---
+
+# Cursor Cloud
+
+- Repeatable worker, not the operational manager.
+- Name TRCoach/TRCoaching and keep one bounded task.
+- Use the saved environment (`npm ci`, no long-running service).
+- Never write live to Drive, Metricool, CRM, Stripe, Superset, or Slack.
+- After work: commit, push, and leave command evidence plus the bounded report.
+- Social benchmark copy only: "Busy week? Make the next step obvious."
+- Do not publish. Do not spend. Do not activate Stripe live.

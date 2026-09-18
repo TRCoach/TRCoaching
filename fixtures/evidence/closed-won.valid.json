@@ -1,0 +1,31 @@
+{
+  "transition_id": "t_closed_won",
+  "from": "payment_verified",
+  "to": "closed_won",
+  "event_id": "evt_closed_won_live_example",
+  "recorded_at": "2026-09-18T10:30:00Z",
+  "owner": "Sam",
+  "system_of_record": "CRM",
+  "required_evidence": [
+    "stripe_payment_ref",
+    "stripe_livemode",
+    "stripe_status",
+    "closed_won_commercial_ref",
+    "payment_mode"
+  ],
+  "provided_evidence": {
+    "stripe_payment_ref": "pi_example_not_live",
+    "stripe_livemode": true,
+    "stripe_status": "succeeded",
+    "closed_won_commercial_ref": "CW-EXAMPLE-001",
+    "payment_mode": "live",
+    "founder_stripe_live_unlock": true,
+    "founder_payment_unlock_ref": "FD-STRIPE-LIVE-CONTROLLED-BETA",
+    "payment_clear_owner": "Sam"
+  },
+  "guard_result": "pass",
+  "founder_gate": false,
+  "external_write": false,
+  "dry_run": true,
+  "notes": "Fixture only. Named founder Stripe-live unlock + Sam payment_clear. Operating mode is never taken from this payload; the trusted registry must already be CONTROLLED_BETA or LIVE. No live Stripe call was made."
+}

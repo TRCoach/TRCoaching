@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/social-qa.schema.json",
+  "title": "TR social QA report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "asset_id",
+    "path",
+    "checksum_sha256",
+    "config_id",
+    "dimensions",
+    "mime",
+    "codec",
+    "safe_margins",
+    "layout_overlap",
+    "provenance",
+    "aigc",
+    "audio",
+    "taylor_pass",
+    "chatgpt_pass",
+    "publish_eligible",
+    "publication_occurred"
+  ],
+  "properties": {
+    "asset_id": { "type": "string" },
+    "path": { "type": "string" },
+    "checksum_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "config_id": { "type": "string" },
+    "dimensions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer" },
+        "height": { "type": "integer" }
+      }
+    },
+    "mime": { "type": "string" },
+    "codec": { "type": ["string", "null"] },
+    "safe_margins": {
+      "type": "object",
+      "required": ["pass"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "expected": { "type": "object" },
+        "notes": { "type": "string" }
+      }
+    },
+    "layout_overlap": {
+      "type": "object",
+      "required": ["pass", "overlaps"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "overlaps": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["generator", "source", "external_media", "paid_assets", "music"],
+      "properties": {
+        "generator": { "type": "string" },
+        "source": { "type": "string", "const": "code" },
+        "external_media": { "type": "boolean", "const": false },
+        "paid_assets": { "type": "boolean", "const": false },
+        "music": { "type": "boolean", "const": false }
+      }
+    },
+    "aigc": {
+      "type": "object",
+      "required": ["used", "rationale"],
+      "properties": {
+        "used": { "type": "boolean" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "audio": { "type": "string", "const": "none" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "pass"],
+        "properties": {
+          "id": { "type": "string" },
+          "pass": { "type": "boolean" },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "taylor_pass": { "type": "boolean" },
+    "chatgpt_pass": { "type": "boolean" },
+    "pass_checksum": { "type": ["string", "null"] },
+    "pass_config_id": { "type": ["string", "null"] },
+    "publish_eligible": { "type": "boolean" },
+    "publication_occurred": { "type": "boolean", "const": false }
+  }
+}

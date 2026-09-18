@@ -1,0 +1,19 @@
+{
+  "event_id": "evt_sales_learning_001",
+  "type": "propose_sales_learning",
+  "occurred_at": "2026-09-18T11:00:00Z",
+  "actor": "Sam",
+  "source": "CRM",
+  "subject_ref": "LEARN-SALES-001",
+  "evidence": {
+    "proposal_version": "sop-sales-objections-v1",
+    "learning_domain": "sales",
+    "source_refs": "conversations,objections,conversions",
+    "apply_policy": false
+  },
+  "idempotency_key": "propose_sales_learning:sop-sales-objections-v1",
+  "trace": {
+    "repo": "TRCoach/TRCoaching",
+    "task": "propose versioned sales SOP only"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/founder-action-catalog.schema.json",
+  "title": "TR Founder Console action catalog",
+  "type": "object",
+  "required": ["id", "version", "actions"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string" },
+    "version": { "type": "string" },
+    "actions": {
+      "type": "array",
+      "minItems": 17,
+      "maxItems": 17,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "title",
+          "workflowId",
+          "stateRequirements",
+          "evidenceRequirements",
+          "owner",
+          "system",
+          "allowedActions",
+          "forbiddenActions",
+          "founderGate",
+          "success",
+          "failureEscalation",
+          "auditType"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 3 },
+          "title": { "type": "string", "minLength": 3 },
+          "workflowId": { "type": "string", "minLength": 3 },
+          "stateRequirements": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "evidenceRequirements": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "owner": {
+            "type": "string",
+            "enum": ["Taylor", "Sam", "Jordan", "Alex", "ChatGPT", "Cursor", "Grok", "Founder"]
+          },
+          "system": {
+            "type": "string",
+            "enum": ["Drive", "Metricool", "CRM", "Stripe", "Superset", "Slack", "control_plane"]
+          },
+          "allowedActions": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "forbiddenActions": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "founderGate": { "type": "boolean" },
+          "success": { "type": "string", "minLength": 10 },
+          "failureEscalation": { "type": "string", "minLength": 10 },
+          "auditType": { "type": "string", "minLength": 3 }
+        }
+      }
+    }
+  }
+}

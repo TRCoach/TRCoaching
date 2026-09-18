@@ -1,0 +1,12 @@
+---
+description: Google Drive remains the policy and knowledge source of truth
+alwaysApply: true
+---
+
+# Drive source priority
+
+1. CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST
+2. AI Coaching Company — Operating System (Master)
+3. Expected policy titles in model/current-state.json
+
+Store titles, as-of times, and environment-variable placeholders only. Never copy the knowledge base, private file IDs, client personal data, or Zone C health detail into the repo, Slack envelopes, fixtures, or reports.

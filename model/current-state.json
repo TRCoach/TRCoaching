@@ -1,0 +1,68 @@
+{
+  "schemaVersion": "1.0.0",
+  "note": "Drive remains the policy/knowledge source of truth. This file stores titles, as-of times, and env-var placeholders only. Do not paste document bodies, file IDs, client data, or Zone C health detail here.",
+  "authoritativeContinuityDocument": {
+    "title": "CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST",
+    "asOf": "2026-09-18T11:36:00Z",
+    "asOfLocal": "18 Sep 2026 — 12:36 BST",
+    "fileIdEnvVar": "TR_DRIVE_CURRENT_STATE_FILE_ID",
+    "fileIdPlaceholder": "${TR_DRIVE_CURRENT_STATE_FILE_ID}"
+  },
+  "expectedPolicyDocuments": [
+    {
+      "role": "operating_system_master",
+      "title": "AI Coaching Company — Operating System (Master)",
+      "fileIdEnvVar": "TR_DRIVE_OS_MASTER_FILE_ID"
+    },
+    {
+      "role": "continuity_handoff_reference",
+      "title": "REFERENCE — Personal ChatGPT Project Continuity Handoff — 16 Sep 2026",
+      "fileIdEnvVar": "TR_DRIVE_CONTINUITY_HANDOFF_FILE_ID"
+    },
+    {
+      "role": "privacy_notice",
+      "title": "Client Privacy Notice — Founding Beta FINAL v3 — 18 Sep 2026",
+      "fileIdEnvVar": "TR_DRIVE_PRIVACY_NOTICE_FILE_ID"
+    },
+    {
+      "role": "explicit_health_consent",
+      "title": "Explicit Health-Data Consent — Founding Beta v1 — APPROVED 18 Sep 2026",
+      "fileIdEnvVar": "TR_DRIVE_HEALTH_CONSENT_FILE_ID"
+    },
+    {
+      "role": "health_screening_process",
+      "title": "Minimum Health-Screening Process — Founding Beta v1.2 — APPROVED 18 Sep 2026",
+      "fileIdEnvVar": "TR_DRIVE_HEALTH_SCREENING_FILE_ID"
+    },
+    {
+      "role": "article9_decision",
+      "title": "Founder Privacy & Article 9 Decision Record — APPROVED 18 Sep 2026",
+      "fileIdEnvVar": "TR_DRIVE_ARTICLE9_DECISION_FILE_ID"
+    },
+    {
+      "role": "stripe_live_gate",
+      "title": "Stripe Package — READY FOR LIVE Gate Pack v1.1 (2026-09-13)",
+      "fileIdEnvVar": "TR_DRIVE_STRIPE_GATE_PACK_FILE_ID"
+    },
+    {
+      "role": "sales_crm_spec",
+      "title": "Sales Operating Manual & CRM Spec — Grok Draft v1",
+      "fileIdEnvVar": "TR_DRIVE_SALES_CRM_SPEC_FILE_ID"
+    },
+    {
+      "role": "beta_plan",
+      "title": "Two-Week Controlled Beta Readiness Delivery Plan — 11–25 Sep 2026 v1",
+      "fileIdEnvVar": "TR_DRIVE_BETA_PLAN_FILE_ID"
+    },
+    {
+      "role": "founder_decision_log",
+      "title": "Founder Decision Log & AI Handoffs",
+      "fileIdEnvVar": "TR_DRIVE_FOUNDER_DECISION_LOG_FILE_ID"
+    },
+    {
+      "role": "superset_dpa_table",
+      "title": "Superset Privacy DPA Decision Table — Founding Beta (DRAFT v1.1)",
+      "fileIdEnvVar": "TR_DRIVE_SUPERSET_DPA_FILE_ID"
+    }
+  ]
+}

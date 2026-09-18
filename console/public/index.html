@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="description" content="TR Training Founder Console — authenticated TEST product. Dry-run unless dispatch is explicitly enabled." />
+    <title>TR Training Founder Console</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to overview</a>
+
+    <section id="login-view" class="login-shell" hidden>
+      <div class="login-card">
+        <p class="eyebrow">TR Training</p>
+        <h1>Founder Console</h1>
+        <p class="lede">Founder-only. No anonymous access. TEST actions never move money or publish.</p>
+        <form id="login-form" onsubmit="event.preventDefault();">
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Enter console</button>
+          <p id="login-error" class="error" role="alert"></p>
+        </form>
+        <p class="install-note">Install: Windows Edge/Chrome — Install app / Add to taskbar from the address-bar icon. iOS Safari — Share → Add to Home Screen. Android Chrome — Install app. Local preview needs <code>FOUNDER_CONSOLE_DEV_AUTH=1</code>. Hosted preview is the private workers.dev URL after Cloudflare deploy.</p>
+      </div>
+    </section>
+
+    <div id="app-view" hidden>
+      <header class="top">
+        <div>
+          <p class="eyebrow">TR Training · Founder Console</p>
+          <h1>Exception-first control</h1>
+        </div>
+        <div class="top-meta">
+          <p id="mode-badge" class="mode" role="status">MODE: TEST</p>
+          <button type="button" id="logout" class="ghost">Log out</button>
+        </div>
+      </header>
+
+      <section class="command" aria-labelledby="command-heading">
+        <h2 id="command-heading">Command</h2>
+        <p>Decompose → trusted mode → evidence → dispatch → verified read-back. Founder never copies prompts between tools.</p>
+        <form id="command-form">
+          <label for="command-input">Natural-language command</label>
+          <textarea id="command-input" rows="3" required placeholder="Progress everything that can be progressed today."></textarea>
+          <button type="submit">Dispatch command</button>
+        </form>
+        <button type="button" id="prepare-social" class="hero-action">
+          <span>Prepare next week’s social media</span>
+          <small>Read performance and policy → plan → produce → QA → dual review → prepare safely</small>
+        </button>
+      </section>
+
+      <main id="main">
+        <section aria-labelledby="result-heading">
+          <h2 id="result-heading">Latest result</h2>
+          <article id="result" class="result" tabindex="-1" aria-live="polite">Awaiting an authenticated command.</article>
+        </section>
+
+        <section aria-labelledby="overview-heading">
+          <h2 id="overview-heading">Exception-first lanes</h2>
+          <div id="overview" class="grid"></div>
+        </section>
+
+        <section aria-labelledby="actions-heading">
+          <div class="section-head">
+            <h2 id="actions-heading">Founder actions</h2>
+            <button type="button" id="customize" class="ghost">Customize home</button>
+          </div>
+          <div id="actions" class="cards"></div>
+        </section>
+
+        <section aria-labelledby="inbox-heading">
+          <h2 id="inbox-heading">Decision inbox</h2>
+          <div id="inbox" class="list"></div>
+        </section>
+
+        <section aria-labelledby="jobs-heading">
+          <div class="section-head">
+            <h2 id="jobs-heading">Dispatch jobs</h2>
+            <div class="actions">
+              <button type="button" id="refresh-jobs" class="ghost">Collect worker results</button>
+              <button type="button" id="rehearsal-slack" class="ghost">Slack rehearsal</button>
+              <button type="button" id="rehearsal-cursor" class="ghost">Cursor rehearsal</button>
+              <button type="button" id="refresh-evidence" class="ghost">Refresh evidence</button>
+            </div>
+          </div>
+          <div id="jobs" class="list"></div>
+        </section>
+
+        <section aria-labelledby="activity-heading">
+          <h2 id="activity-heading">Audit</h2>
+          <div id="activity" class="list"></div>
+        </section>
+
+        <section aria-labelledby="status-heading">
+          <h2 id="status-heading">Connectors</h2>
+          <div id="status" class="grid"></div>
+        </section>
+
+        <section aria-labelledby="usage-heading">
+          <h2 id="usage-heading">Usage</h2>
+          <div id="usage" class="list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="drawer" class="drawer">
+      <form method="dialog" class="drawer-close">
+        <button type="submit" class="ghost" aria-label="Close detail drawer">Close</button>
+      </form>
+      <div id="drawer-body"></div>
+    </dialog>
+
+    <dialog id="prefs" class="drawer">
+      <form method="dialog"><button type="submit" class="ghost">Close</button></form>
+      <h2>Home customization</h2>
+      <p>Visibility, order, label, icon and confirm only. Permissions and gates stay in the catalog.</p>
+      <div id="prefs-body"></div>
+      <button type="button" id="save-prefs">Save layout</button>
+    </dialog>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

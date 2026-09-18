@@ -1,0 +1,18 @@
+---
+description: Required local and CI test commands
+alwaysApply: true
+---
+
+# Commands
+
+```bash
+npm ci
+npm run build
+npm test
+npm run validate
+npm run benchmark:social
+npm run qa:social
+npm run console:check
+```
+
+CI runs build, test, validate, and console:check with no secrets. `.cursor/environment.json` installs with `npm ci` and starts no long-running service. Founder Console preview is localhost-only (`npm run console:dev`).

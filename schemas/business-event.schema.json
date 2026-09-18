@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/business-event.schema.json",
+  "title": "TR business event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "type",
+    "occurred_at",
+    "actor",
+    "source",
+    "evidence",
+    "idempotency_key"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "minLength": 8,
+      "pattern": "^[A-Za-z0-9_.:-]+$"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "actor": {
+      "type": "string",
+      "enum": ["Taylor", "Sam", "Jordan", "Alex", "ChatGPT", "Cursor", "Grok", "Founder"]
+    },
+    "source": {
+      "type": "string",
+      "enum": ["Drive", "Metricool", "CRM", "Stripe", "Superset", "Slack", "control_plane"]
+    },
+    "subject_ref": {
+      "type": "string",
+      "description": "Non-PII opaque reference only."
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repo": { "type": "string", "const": "TRCoach/TRCoaching" },
+        "task": { "type": "string" },
+        "slack_prefix": { "type": "string" }
+      }
+    }
+  }
+}

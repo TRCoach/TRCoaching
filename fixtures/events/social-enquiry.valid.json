@@ -1,0 +1,19 @@
+{
+  "event_id": "evt_social_enquiry_001",
+  "type": "social_enquiry",
+  "occurred_at": "2026-09-18T10:00:00Z",
+  "actor": "Taylor",
+  "source": "Metricool",
+  "subject_ref": "ENQ-BENCH-001",
+  "evidence": {
+    "enquiry_channel": "instagram",
+    "enquiry_received_at": "2026-09-18T10:00:00Z",
+    "non_pii_enquiry_ref": "ENQ-BENCH-001",
+    "campaign_ref": "CAMP-BENCH-001"
+  },
+  "idempotency_key": "social_enquiry:ENQ-BENCH-001",
+  "trace": {
+    "repo": "TRCoach/TRCoaching",
+    "task": "record social enquiry stub"
+  }
+}

@@ -1,0 +1,1495 @@
+{
+  "id": "tr-training-lifecycle-v1",
+  "version": "1.0.0",
+  "title": "TR Training full-business lifecycle",
+  "initialState": "uninitialized",
+  "systemsOfRecord": {
+    "Drive": "policy/knowledge",
+    "Metricool": "social scheduling/analytics",
+    "CRM": "lead/commercial state",
+    "Stripe": "payment truth",
+    "Superset": "coaching/delivery truth",
+    "Slack": "event/command bus"
+  },
+  "owners": [
+    "Taylor",
+    "Sam",
+    "Jordan",
+    "Alex",
+    "ChatGPT",
+    "Cursor",
+    "Grok",
+    "Founder"
+  ],
+  "states": [
+    "uninitialized",
+    "marketing_active",
+    "social_enquiry_received",
+    "enquiry_classified",
+    "nurture",
+    "qualification",
+    "offer_presented",
+    "payment_pending",
+    "payment_verified",
+    "closed_won",
+    "onboarding_started",
+    "privacy_notice_issued",
+    "health_consent_recorded",
+    "screening",
+    "ready",
+    "programme_draft",
+    "founder_golive_approved",
+    "assigned_welcomed",
+    "active_coaching",
+    "weekly_checkin_open",
+    "adherence_escalation",
+    "retention_review",
+    "renewal_offered",
+    "cancellation_requested",
+    "refund_credit_hold",
+    "offboarding",
+    "closed_lost",
+    "blocked",
+    "social_asset_drafted",
+    "social_qa_recorded",
+    "publish_eligible",
+    "marketing_cycle_idle",
+    "marketing_cycle_analyse",
+    "marketing_cycle_generate",
+    "marketing_cycle_produce",
+    "marketing_cycle_qa",
+    "marketing_cycle_taylor_pass",
+    "marketing_cycle_chatgpt_pass",
+    "marketing_cycle_scheduled",
+    "marketing_cycle_monitor",
+    "learning_idle",
+    "learning_proposal",
+    "learning_reviewed",
+    "sop_change_recorded"
+  ],
+  "transitions": [
+    {
+      "id": "t_start_marketing",
+      "from": "uninitialized",
+      "to": "marketing_active",
+      "event": "start_marketing",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "campaign_ref"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "dry_run.record_campaign_pointer",
+      "guard": "allow",
+      "stopCondition": "paid_spend_requested",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "social_enquiry_or_asset_draft",
+      "founderGate": false,
+      "idempotencyKey": "start_marketing:{campaign_ref}"
+    },
+    {
+      "id": "t_social_enquiry",
+      "from": "marketing_active",
+      "to": "social_enquiry_received",
+      "event": "social_enquiry",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "enquiry_channel",
+        "enquiry_received_at",
+        "non_pii_enquiry_ref"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.create_lead_stub",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "pii_or_zone_c_detected",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "classify_enquiry",
+      "founderGate": false,
+      "idempotencyKey": "social_enquiry:{non_pii_enquiry_ref}"
+    },
+    {
+      "id": "t_classify_enquiry",
+      "from": "social_enquiry_received",
+      "to": "enquiry_classified",
+      "event": "classify_enquiry",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "classification_label"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.apply_classification",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "classification_not_in_allowlist",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "start_nurture_or_qualify_lead",
+      "founderGate": false,
+      "idempotencyKey": "classify_enquiry:{non_pii_enquiry_ref}"
+    },
+    {
+      "id": "t_start_nurture",
+      "from": "enquiry_classified",
+      "to": "nurture",
+      "event": "start_nurture",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "nurture_sequence_ref"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.queue_nurture",
+      "guard": "allow",
+      "stopCondition": "publication_or_paid_spend_requested",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 120,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "qualify_lead",
+      "founderGate": false,
+      "idempotencyKey": "start_nurture:{non_pii_enquiry_ref}:{nurture_sequence_ref}"
+    },
+    {
+      "id": "t_qualify_from_classified",
+      "from": "enquiry_classified",
+      "to": "qualification",
+      "event": "qualify_lead",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "qualification_outcome"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.update_commercial_stage",
+      "guard": "allow",
+      "stopCondition": "missing_qualification_outcome",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "present_offer",
+      "founderGate": false,
+      "idempotencyKey": "qualify_lead:{non_pii_enquiry_ref}"
+    },
+    {
+      "id": "t_qualify_from_nurture",
+      "from": "nurture",
+      "to": "qualification",
+      "event": "qualify_lead",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "qualification_outcome"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.update_commercial_stage",
+      "guard": "allow",
+      "stopCondition": "missing_qualification_outcome",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "present_offer",
+      "founderGate": false,
+      "idempotencyKey": "qualify_lead:{non_pii_enquiry_ref}"
+    },
+    {
+      "id": "t_closed_lost_from_qualification",
+      "from": "qualification",
+      "to": "closed_lost",
+      "event": "mark_closed_lost",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "closed_lost_reason_code"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.update_commercial_stage",
+      "guard": "allow",
+      "stopCondition": "production_deletion_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "start_nurture",
+      "founderGate": false,
+      "idempotencyKey": "mark_closed_lost:{non_pii_enquiry_ref}"
+    },
+    {
+      "id": "t_reopen_nurture",
+      "from": "closed_lost",
+      "to": "nurture",
+      "event": "start_nurture",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "non_pii_enquiry_ref",
+        "nurture_sequence_ref"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.queue_nurture",
+      "guard": "allow",
+      "stopCondition": "publication_or_paid_spend_requested",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 120,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "qualify_lead",
+      "founderGate": false,
+      "idempotencyKey": "reopen_nurture:{non_pii_enquiry_ref}:{nurture_sequence_ref}"
+    },
+    {
+      "id": "t_present_offer",
+      "from": "qualification",
+      "to": "offer_presented",
+      "event": "present_offer",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "offer_id",
+        "offer_version"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_offer",
+      "guard": "no_live_payment_link",
+      "stopCondition": "live_payment_link_or_charge_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "payment_intent_recorded",
+      "founderGate": false,
+      "idempotencyKey": "present_offer:{offer_id}:{offer_version}"
+    },
+    {
+      "id": "t_payment_intent",
+      "from": "offer_presented",
+      "to": "payment_pending",
+      "event": "payment_intent_recorded",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "offer_id",
+        "stripe_payment_ref",
+        "stripe_livemode"
+      ],
+      "systemOfRecord": "Stripe",
+      "automatedAction": "dry_run.read_payment_ref",
+      "guard": "no_live_charge",
+      "stopCondition": "live_charge_refund_credit_or_payment_link",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "payment_cleared",
+      "founderGate": false,
+      "idempotencyKey": "payment_intent:{stripe_payment_ref}"
+    },
+    {
+      "id": "t_payment_cleared",
+      "from": "payment_pending",
+      "to": "payment_verified",
+      "event": "payment_cleared",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "stripe_payment_ref",
+        "stripe_livemode",
+        "stripe_status",
+        "payment_clear_owner"
+      ],
+      "systemOfRecord": "Stripe",
+      "automatedAction": "dry_run.verify_payment_status",
+      "guard": "payment_clear_owner_is_sam",
+      "stopCondition": "stripe_status_not_succeeded",
+      "retryPolicy": {
+        "maxAttempts": 5,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "mark_closed_won",
+      "founderGate": false,
+      "idempotencyKey": "payment_cleared:{stripe_payment_ref}"
+    },
+    {
+      "id": "t_payment_failed",
+      "from": "payment_pending",
+      "to": "offer_presented",
+      "event": "payment_failed",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "stripe_payment_ref",
+        "stripe_status"
+      ],
+      "systemOfRecord": "Stripe",
+      "automatedAction": "dry_run.record_payment_failure",
+      "guard": "allow",
+      "stopCondition": "retry_creates_live_charge",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "present_offer_or_qualify_lead",
+      "founderGate": false,
+      "idempotencyKey": "payment_failed:{stripe_payment_ref}"
+    },
+    {
+      "id": "t_closed_won",
+      "from": "payment_verified",
+      "to": "closed_won",
+      "event": "mark_closed_won",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "stripe_payment_ref",
+        "stripe_livemode",
+        "stripe_status",
+        "closed_won_commercial_ref",
+        "payment_mode"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.mark_closed_won",
+      "guard": "live_closed_won_requires_livemode",
+      "stopCondition": "test_mode_or_unverified_payment",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "start_onboarding",
+      "founderGate": false,
+      "idempotencyKey": "mark_closed_won:{closed_won_commercial_ref}",
+      "requiredPermission": "payments"
+    },
+    {
+      "id": "t_start_onboarding",
+      "from": "closed_won",
+      "to": "onboarding_started",
+      "event": "start_onboarding",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "closed_won_commercial_ref",
+        "onboarding_pack_version"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.open_onboarding_record",
+      "guard": "no_health_judgement",
+      "stopCondition": "health_or_safety_judgement_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "issue_privacy_notice",
+      "founderGate": false,
+      "idempotencyKey": "start_onboarding:{closed_won_commercial_ref}"
+    },
+    {
+      "id": "t_issue_privacy_notice",
+      "from": "onboarding_started",
+      "to": "privacy_notice_issued",
+      "event": "issue_privacy_notice",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "privacy_notice_version",
+        "privacy_notice_issued_at"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_notice_pointer",
+      "guard": "privacy_notice_version_required",
+      "stopCondition": "material_legal_privacy_exception",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "record_explicit_health_consent",
+      "founderGate": false,
+      "idempotencyKey": "issue_privacy_notice:{closed_won_commercial_ref}:{privacy_notice_version}"
+    },
+    {
+      "id": "t_record_health_consent",
+      "from": "privacy_notice_issued",
+      "to": "health_consent_recorded",
+      "event": "record_explicit_health_consent",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "explicit_health_consent",
+        "consent_version",
+        "consent_recorded_at"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_consent_flag",
+      "guard": "explicit_health_consent_required",
+      "stopCondition": "consent_false_or_zone_c_detail_present",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "start_screening",
+      "founderGate": false,
+      "idempotencyKey": "record_explicit_health_consent:{closed_won_commercial_ref}:{consent_version}"
+    },
+    {
+      "id": "t_start_screening",
+      "from": "health_consent_recorded",
+      "to": "screening",
+      "event": "start_screening",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "explicit_health_consent",
+        "screening_process_version"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.open_screening_record",
+      "guard": "explicit_health_consent_required",
+      "stopCondition": "missing_consent_or_health_judgement",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "human_ready",
+      "founderGate": false,
+      "idempotencyKey": "start_screening:{closed_won_commercial_ref}:{screening_process_version}"
+    },
+    {
+      "id": "t_human_ready",
+      "from": "screening",
+      "to": "ready",
+      "event": "human_ready",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "explicit_health_consent",
+        "ready_human_evidence",
+        "ready_attested_by",
+        "screening_complete_human"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "none.human_only",
+      "guard": "human_ready_evidence_required",
+      "stopCondition": "automated_ready_or_missing_human_evidence",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "draft_programme",
+      "founderGate": false,
+      "idempotencyKey": "human_ready:{closed_won_commercial_ref}"
+    },
+    {
+      "id": "t_draft_programme",
+      "from": "ready",
+      "to": "programme_draft",
+      "event": "draft_programme",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "programme_draft_ref",
+        "ready_human_evidence"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.record_programme_draft_pointer",
+      "guard": "human_ready_evidence_required",
+      "stopCondition": "first_client_programme_golive_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "founder_approve_golive",
+      "founderGate": false,
+      "idempotencyKey": "draft_programme:{programme_draft_ref}"
+    },
+    {
+      "id": "t_founder_golive",
+      "from": "programme_draft",
+      "to": "founder_golive_approved",
+      "event": "founder_approve_golive",
+      "owner": "Founder",
+      "requiredEvidence": [
+        "programme_draft_ref",
+        "founder_golive_approval",
+        "founder_decision_ref"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_founder_decision_pointer",
+      "guard": "founder_golive_required",
+      "stopCondition": "approval_false_or_proxy_attestation",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "hold_for_founder"
+      },
+      "nextTrigger": "assign_and_welcome",
+      "founderGate": true,
+      "idempotencyKey": "founder_approve_golive:{programme_draft_ref}"
+    },
+    {
+      "id": "t_assign_welcome",
+      "from": "founder_golive_approved",
+      "to": "assigned_welcomed",
+      "event": "assign_and_welcome",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "founder_golive_approval",
+        "assignment_ref",
+        "welcome_sent_ref"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.record_assignment_pointer",
+      "guard": "founder_golive_required",
+      "stopCondition": "assignment_without_founder_approval",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "start_active_coaching",
+      "founderGate": true,
+      "idempotencyKey": "assign_and_welcome:{assignment_ref}"
+    },
+    {
+      "id": "t_start_active_coaching",
+      "from": "assigned_welcomed",
+      "to": "active_coaching",
+      "event": "start_active_coaching",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "founder_golive_approval"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.open_delivery_record",
+      "guard": "founder_golive_required",
+      "stopCondition": "first_client_programme_golive_without_founder",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "open_weekly_checkin",
+      "founderGate": true,
+      "idempotencyKey": "start_active_coaching:{assignment_ref}"
+    },
+    {
+      "id": "t_open_weekly_checkin",
+      "from": "active_coaching",
+      "to": "weekly_checkin_open",
+      "event": "open_weekly_checkin",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "checkin_week"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.open_checkin_record",
+      "guard": "no_health_judgement",
+      "stopCondition": "zone_c_detail_in_envelope",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "complete_weekly_checkin_or_escalate_missed_adherence",
+      "founderGate": false,
+      "idempotencyKey": "open_weekly_checkin:{assignment_ref}:{checkin_week}"
+    },
+    {
+      "id": "t_complete_weekly_checkin",
+      "from": "weekly_checkin_open",
+      "to": "active_coaching",
+      "event": "complete_weekly_checkin",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "checkin_week",
+        "checkin_outcome"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.close_checkin_record",
+      "guard": "no_health_judgement",
+      "stopCondition": "zone_c_detail_or_clinical_judgement",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "open_weekly_checkin_or_start_retention",
+      "founderGate": false,
+      "idempotencyKey": "complete_weekly_checkin:{assignment_ref}:{checkin_week}"
+    },
+    {
+      "id": "t_escalate_missed_from_checkin",
+      "from": "weekly_checkin_open",
+      "to": "adherence_escalation",
+      "event": "escalate_missed_adherence",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "checkin_week",
+        "escalation_reason_code"
+      ],
+      "systemOfRecord": "Slack",
+      "automatedAction": "dry_run.queue_alex_route",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "pii_or_zone_c_in_slack_envelope",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "resolve_adherence_escalation",
+      "founderGate": false,
+      "idempotencyKey": "escalate_missed_adherence:{assignment_ref}:{checkin_week}"
+    },
+    {
+      "id": "t_escalate_missed_from_active",
+      "from": "active_coaching",
+      "to": "adherence_escalation",
+      "event": "escalate_missed_adherence",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "escalation_reason_code"
+      ],
+      "systemOfRecord": "Slack",
+      "automatedAction": "dry_run.queue_alex_route",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "pii_or_zone_c_in_slack_envelope",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "resolve_adherence_escalation",
+      "founderGate": false,
+      "idempotencyKey": "escalate_missed_adherence:{assignment_ref}:{escalation_reason_code}"
+    },
+    {
+      "id": "t_resolve_adherence",
+      "from": "adherence_escalation",
+      "to": "active_coaching",
+      "event": "resolve_adherence_escalation",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "escalation_resolution_code"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.close_escalation_record",
+      "guard": "no_health_judgement",
+      "stopCondition": "health_safety_judgement_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "open_weekly_checkin",
+      "founderGate": false,
+      "idempotencyKey": "resolve_adherence_escalation:{assignment_ref}:{escalation_resolution_code}"
+    },
+    {
+      "id": "t_start_retention",
+      "from": "active_coaching",
+      "to": "retention_review",
+      "event": "start_retention",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "assignment_ref",
+        "retention_window"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.open_retention_review",
+      "guard": "allow",
+      "stopCondition": "live_discount_or_credit_without_founder",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 120,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "offer_renewal_or_request_cancellation",
+      "founderGate": false,
+      "idempotencyKey": "start_retention:{assignment_ref}:{retention_window}"
+    },
+    {
+      "id": "t_offer_renewal",
+      "from": "retention_review",
+      "to": "renewal_offered",
+      "event": "offer_renewal",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "assignment_ref",
+        "renewal_offer_ref"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_renewal_offer",
+      "guard": "no_live_payment_link",
+      "stopCondition": "live_payment_link_or_charge_requested",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "accept_renewal_or_request_cancellation",
+      "founderGate": false,
+      "idempotencyKey": "offer_renewal:{renewal_offer_ref}"
+    },
+    {
+      "id": "t_accept_renewal",
+      "from": "renewal_offered",
+      "to": "active_coaching",
+      "event": "accept_renewal",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "renewal_offer_ref",
+        "stripe_payment_ref",
+        "stripe_livemode",
+        "stripe_status"
+      ],
+      "systemOfRecord": "Stripe",
+      "automatedAction": "dry_run.verify_renewal_payment",
+      "guard": "live_closed_won_requires_livemode",
+      "stopCondition": "test_mode_treated_as_live_renewal",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "open_weekly_checkin",
+      "founderGate": false,
+      "idempotencyKey": "accept_renewal:{renewal_offer_ref}",
+      "requiredPermission": "payments"
+    },
+    {
+      "id": "t_cancel_from_active",
+      "from": "active_coaching",
+      "to": "cancellation_requested",
+      "event": "request_cancellation",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "assignment_ref",
+        "cancellation_reason_code"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_cancellation_request",
+      "guard": "allow",
+      "stopCondition": "automated_refund_or_credit",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "founder_refund_credit_decision",
+      "founderGate": false,
+      "idempotencyKey": "request_cancellation:{assignment_ref}"
+    },
+    {
+      "id": "t_cancel_from_retention",
+      "from": "retention_review",
+      "to": "cancellation_requested",
+      "event": "request_cancellation",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "assignment_ref",
+        "cancellation_reason_code"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_cancellation_request",
+      "guard": "allow",
+      "stopCondition": "automated_refund_or_credit",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "founder_refund_credit_decision",
+      "founderGate": false,
+      "idempotencyKey": "request_cancellation:{assignment_ref}"
+    },
+    {
+      "id": "t_cancel_from_renewal",
+      "from": "renewal_offered",
+      "to": "cancellation_requested",
+      "event": "request_cancellation",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "assignment_ref",
+        "cancellation_reason_code"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_cancellation_request",
+      "guard": "allow",
+      "stopCondition": "automated_refund_or_credit",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "founder_refund_credit_decision",
+      "founderGate": false,
+      "idempotencyKey": "request_cancellation:{assignment_ref}"
+    },
+    {
+      "id": "t_cancel_from_onboarding",
+      "from": "onboarding_started",
+      "to": "cancellation_requested",
+      "event": "request_cancellation",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "closed_won_commercial_ref",
+        "cancellation_reason_code"
+      ],
+      "systemOfRecord": "CRM",
+      "automatedAction": "dry_run.record_cancellation_request",
+      "guard": "allow",
+      "stopCondition": "automated_refund_or_credit",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "founder_refund_credit_decision",
+      "founderGate": false,
+      "idempotencyKey": "request_cancellation:{closed_won_commercial_ref}"
+    },
+    {
+      "id": "t_founder_refund_credit",
+      "from": "cancellation_requested",
+      "to": "refund_credit_hold",
+      "event": "founder_refund_credit_decision",
+      "owner": "Founder",
+      "requiredEvidence": [
+        "cancellation_reason_code",
+        "founder_refund_credit_decision",
+        "founder_decision_ref"
+      ],
+      "systemOfRecord": "Stripe",
+      "automatedAction": "none.route_to_founder",
+      "guard": "founder_refund_credit",
+      "stopCondition": "live_refund_or_credit_without_founder",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "hold_for_founder"
+      },
+      "nextTrigger": "complete_offboarding",
+      "founderGate": true,
+      "idempotencyKey": "founder_refund_credit_decision:{closed_won_commercial_ref}:{founder_decision_ref}",
+      "requiredPermission": "refunds_credits"
+    },
+    {
+      "id": "t_complete_offboarding",
+      "from": "refund_credit_hold",
+      "to": "offboarding",
+      "event": "complete_offboarding",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "founder_refund_credit_decision",
+        "offboarding_complete"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.close_delivery_record",
+      "guard": "founder_refund_credit",
+      "stopCondition": "production_deletion_or_unauthorised_refund",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "none",
+      "founderGate": true,
+      "idempotencyKey": "complete_offboarding:{closed_won_commercial_ref}"
+    },
+    {
+      "id": "t_offboard_without_money_movement",
+      "from": "cancellation_requested",
+      "to": "offboarding",
+      "event": "complete_offboarding",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "cancellation_reason_code",
+        "offboarding_complete",
+        "money_movement"
+      ],
+      "systemOfRecord": "Superset",
+      "automatedAction": "dry_run.close_delivery_record",
+      "guard": "offboard_without_money_movement",
+      "stopCondition": "refund_or_credit_not_routed_to_founder",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "none",
+      "founderGate": false,
+      "idempotencyKey": "complete_offboarding:{closed_won_commercial_ref}"
+    },
+    {
+      "id": "t_route_blocker",
+      "from": "blocked",
+      "to": "blocked",
+      "event": "route_blocker",
+      "owner": "Alex",
+      "requiredEvidence": [
+        "blocker_code",
+        "source_state"
+      ],
+      "systemOfRecord": "Slack",
+      "automatedAction": "dry_run.queue_alex_route",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "pii_or_zone_c_in_slack_envelope",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "owner_resume_from_source_state",
+      "founderGate": false,
+      "idempotencyKey": "route_blocker:{blocker_code}:{source_state}"
+    },
+    {
+      "id": "t_raise_blocker",
+      "from": "marketing_active",
+      "to": "blocked",
+      "event": "route_blocker",
+      "owner": "Alex",
+      "requiredEvidence": [
+        "blocker_code",
+        "source_state"
+      ],
+      "systemOfRecord": "Slack",
+      "automatedAction": "dry_run.queue_alex_route",
+      "guard": "no_sensitive_payload",
+      "stopCondition": "pii_or_zone_c_in_slack_envelope",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "owner_resume_from_source_state",
+      "founderGate": false,
+      "idempotencyKey": "route_blocker:{blocker_code}:{source_state}"
+    },
+    {
+      "id": "t_social_asset_draft",
+      "from": "marketing_active",
+      "to": "social_asset_drafted",
+      "event": "social_asset_drafted",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_asset_pointer",
+      "guard": "allow",
+      "stopCondition": "platform_upload_or_paid_asset",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "social_qa_completed",
+      "founderGate": false,
+      "idempotencyKey": "social_asset_drafted:{asset_checksum}"
+    },
+    {
+      "id": "t_social_qa",
+      "from": "social_asset_drafted",
+      "to": "social_qa_recorded",
+      "event": "social_qa_completed",
+      "owner": "ChatGPT",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "qa_report_ref"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_qa_pointer",
+      "guard": "allow",
+      "stopCondition": "publish_without_dual_pass",
+      "retryPolicy": {
+        "maxAttempts": 2,
+        "backoffSeconds": 30,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "request_publication",
+      "founderGate": false,
+      "idempotencyKey": "social_qa_completed:{asset_checksum}:{asset_config_id}"
+    },
+    {
+      "id": "t_request_publication",
+      "from": "social_qa_recorded",
+      "to": "publish_eligible",
+      "event": "request_publication",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "taylor_pass",
+        "chatgpt_pass"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "none.publication_blocked_without_dual_pass",
+      "guard": "publication_dual_pass",
+      "stopCondition": "missing_exact_final_dual_pass",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "nextTrigger": "none",
+      "founderGate": true,
+      "idempotencyKey": "request_publication:{asset_checksum}:{asset_config_id}"
+    },
+    {
+      "id": "t_cycle_analyse",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_analyse",
+      "event": "analyse_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "cycle_week",
+        "performance_summary_ref"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "dry_run.read_performance",
+      "guard": "allow",
+      "stopCondition": "paid_spend_requested",
+      "nextTrigger": "generate_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "analyse_marketing_cycle:{cycle_week}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_idle"
+    },
+    {
+      "id": "t_cycle_generate",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_generate",
+      "event": "generate_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "cycle_week",
+        "draft_concept_ref"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_concept_pointer",
+      "guard": "allow",
+      "stopCondition": "publication_requested",
+      "nextTrigger": "produce_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "generate_marketing_cycle:{cycle_week}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_analyse"
+    },
+    {
+      "id": "t_cycle_produce",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_produce",
+      "event": "produce_marketing_cycle",
+      "owner": "Cursor",
+      "requiredEvidence": [
+        "cycle_week",
+        "asset_checksum",
+        "asset_config_id"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_asset_pointer",
+      "guard": "allow",
+      "stopCondition": "platform_upload_or_paid_asset",
+      "nextTrigger": "qa_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "produce_marketing_cycle:{asset_checksum}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_generate"
+    },
+    {
+      "id": "t_cycle_qa",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_qa",
+      "event": "qa_marketing_cycle",
+      "owner": "ChatGPT",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "qa_report_ref"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_qa_pointer",
+      "guard": "allow",
+      "stopCondition": "publish_without_dual_pass",
+      "nextTrigger": "taylor_pass_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "qa_marketing_cycle:{asset_checksum}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_produce"
+    },
+    {
+      "id": "t_cycle_taylor",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_taylor_pass",
+      "event": "taylor_pass_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "taylor_pass"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "none.human_only",
+      "guard": "taylor_pass_required",
+      "stopCondition": "taylor_pass_false",
+      "nextTrigger": "chatgpt_pass_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "taylor_pass_marketing_cycle:{asset_checksum}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_qa"
+    },
+    {
+      "id": "t_cycle_chatgpt",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_chatgpt_pass",
+      "event": "chatgpt_pass_marketing_cycle",
+      "owner": "ChatGPT",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "taylor_pass",
+        "chatgpt_pass",
+        "pass_checksum",
+        "pass_config_id"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "none.human_only",
+      "guard": "weekly_cycle_dual_pass",
+      "stopCondition": "missing_exact_final_dual_pass",
+      "nextTrigger": "schedule_marketing_cycle",
+      "founderGate": true,
+      "idempotencyKey": "chatgpt_pass_marketing_cycle:{asset_checksum}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_taylor_pass"
+    },
+    {
+      "id": "t_cycle_schedule",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_scheduled",
+      "event": "schedule_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "asset_checksum",
+        "asset_config_id",
+        "taylor_pass",
+        "chatgpt_pass",
+        "pass_checksum",
+        "pass_config_id"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "dry_run.schedule_only",
+      "guard": "weekly_cycle_dual_pass",
+      "stopCondition": "schedule_without_dual_pass_or_unlock",
+      "nextTrigger": "monitor_marketing_cycle",
+      "founderGate": true,
+      "idempotencyKey": "schedule_marketing_cycle:{asset_checksum}",
+      "requiredPermission": "metricool_schedule",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_chatgpt_pass"
+    },
+    {
+      "id": "t_cycle_monitor",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_monitor",
+      "event": "monitor_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "cycle_week",
+        "performance_summary_ref"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "dry_run.read_performance",
+      "guard": "allow",
+      "stopCondition": "paid_spend_requested",
+      "nextTrigger": "propose_marketing_learning",
+      "founderGate": false,
+      "idempotencyKey": "monitor_marketing_cycle:{cycle_week}",
+      "retryPolicy": {
+        "maxAttempts": 3,
+        "backoffSeconds": 60,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_scheduled"
+    },
+    {
+      "id": "t_learn_marketing",
+      "track": "learning",
+      "to": "learning_proposal",
+      "event": "propose_marketing_learning",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "proposal_version",
+        "learning_domain",
+        "source_refs"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_learning_proposal",
+      "guard": "learning_proposal_only",
+      "stopCondition": "self_modify_policy",
+      "nextTrigger": "review_learning_proposal",
+      "founderGate": false,
+      "idempotencyKey": "propose_marketing_learning:{proposal_version}",
+      "learningDomain": "marketing",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "learning_idle"
+    },
+    {
+      "id": "t_learn_sales",
+      "track": "learning",
+      "to": "learning_proposal",
+      "event": "propose_sales_learning",
+      "owner": "Sam",
+      "requiredEvidence": [
+        "proposal_version",
+        "learning_domain",
+        "source_refs"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_learning_proposal",
+      "guard": "learning_proposal_only",
+      "stopCondition": "self_modify_policy",
+      "nextTrigger": "review_learning_proposal",
+      "founderGate": false,
+      "idempotencyKey": "propose_sales_learning:{proposal_version}",
+      "learningDomain": "sales",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "learning_idle"
+    },
+    {
+      "id": "t_learn_coaching",
+      "track": "learning",
+      "to": "learning_proposal",
+      "event": "propose_coaching_learning",
+      "owner": "Jordan",
+      "requiredEvidence": [
+        "proposal_version",
+        "learning_domain",
+        "source_refs"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_learning_proposal",
+      "guard": "learning_proposal_only",
+      "stopCondition": "self_modify_policy",
+      "nextTrigger": "review_learning_proposal",
+      "founderGate": false,
+      "idempotencyKey": "propose_coaching_learning:{proposal_version}",
+      "learningDomain": "coaching",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "learning_idle"
+    },
+    {
+      "id": "t_review_learning",
+      "track": "learning",
+      "to": "learning_reviewed",
+      "event": "review_learning_proposal",
+      "owner": "ChatGPT",
+      "requiredEvidence": [
+        "proposal_version",
+        "chatgpt_learning_review"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_learning_review",
+      "guard": "chatgpt_reviewed_learning",
+      "stopCondition": "unreviewed_policy_change",
+      "nextTrigger": "founder_approve_sop_change",
+      "founderGate": false,
+      "idempotencyKey": "review_learning_proposal:{proposal_version}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "learning_proposal"
+    },
+    {
+      "id": "t_founder_sop",
+      "track": "learning",
+      "to": "sop_change_recorded",
+      "event": "founder_approve_sop_change",
+      "owner": "Founder",
+      "requiredEvidence": [
+        "proposal_version",
+        "founder_sop_approval",
+        "founder_decision_ref"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "dry_run.record_founder_decision_pointer",
+      "guard": "founder_sop_approval",
+      "stopCondition": "agent_self_modify_policy",
+      "nextTrigger": "none",
+      "founderGate": true,
+      "idempotencyKey": "founder_approve_sop_change:{proposal_version}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "learning_reviewed"
+    },
+    {
+      "id": "t_learning_reset",
+      "track": "learning",
+      "to": "learning_idle",
+      "event": "close_learning_cycle",
+      "owner": "ChatGPT",
+      "requiredEvidence": [
+        "proposal_version"
+      ],
+      "systemOfRecord": "Drive",
+      "automatedAction": "none.policy_remains_on_drive",
+      "guard": "allow",
+      "stopCondition": "self_modify_policy",
+      "nextTrigger": "propose_next_learning",
+      "founderGate": false,
+      "idempotencyKey": "close_learning_cycle:{proposal_version}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "sop_change_recorded"
+    },
+    {
+      "id": "t_cycle_reset",
+      "track": "marketing_cycle",
+      "to": "marketing_cycle_idle",
+      "event": "close_marketing_cycle",
+      "owner": "Taylor",
+      "requiredEvidence": [
+        "cycle_week"
+      ],
+      "systemOfRecord": "Metricool",
+      "automatedAction": "none",
+      "guard": "allow",
+      "stopCondition": "paid_spend_requested",
+      "nextTrigger": "analyse_marketing_cycle",
+      "founderGate": false,
+      "idempotencyKey": "close_marketing_cycle:{cycle_week}",
+      "retryPolicy": {
+        "maxAttempts": 1,
+        "backoffSeconds": 0,
+        "escalateTo": "Alex",
+        "onExhausted": "fail_closed"
+      },
+      "from": "marketing_cycle_monitor"
+    }
+  ]
+}

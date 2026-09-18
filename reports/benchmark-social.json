@@ -1,0 +1,325 @@
+{
+  "report_id": "bench_social_control_plane_v1",
+  "kind": "social_asset_production_qa",
+  "created_at": "2026-09-18T16:34:09.639Z",
+  "repo": "TRCoach/TRCoaching",
+  "bounded_task": "asset production + automated QA + completion report only",
+  "commands": [
+    {
+      "command": "npm ci",
+      "result": "see reports/COMPLETION.md",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run build",
+      "result": "pass",
+      "exit_code": 0
+    },
+    {
+      "command": "npm test",
+      "result": "pass",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run validate",
+      "result": "pass",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run benchmark:social",
+      "result": "pass",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run qa:social",
+      "result": "pass",
+      "exit_code": 0
+    }
+  ],
+  "files": [
+    "assets/benchmark/busy-week-feed.jpg",
+    "assets/benchmark/busy-week-feed.webp",
+    "assets/benchmark/busy-week-reel.mp4",
+    "assets/benchmark/busy-week-storyboard.json",
+    "assets/benchmark/reel-scene-01.jpg",
+    "assets/benchmark/reel-scene-02.jpg",
+    "assets/benchmark/reel-scene-03.jpg"
+  ],
+  "assets": [
+    {
+      "asset_id": "feed_1080x1350_jpg",
+      "path": "assets/benchmark/busy-week-feed.jpg",
+      "checksum_sha256": "67ee6b181c261f2e5ac3fcd37fc678be9481f07bf31f07685cde9267673b02dc",
+      "config_id": "scene-benchmark-v1",
+      "dimensions": {
+        "width": 1080,
+        "height": 1350
+      },
+      "mime": "image/jpeg",
+      "codec": null,
+      "safe_margins": {
+        "pass": true
+      },
+      "layout_overlap": {
+        "pass": true,
+        "overlaps": []
+      },
+      "provenance": {
+        "generator": "tr-control-plane/social-render",
+        "source": "code",
+        "external_media": false,
+        "paid_assets": false,
+        "music": false
+      },
+      "aigc": {
+        "used": false,
+        "rationale": "Original scene-based SVG rendered by sharp/ffmpeg. No generative model, no stock, no music."
+      },
+      "audio": "none",
+      "checks": [
+        {
+          "id": "dimensions",
+          "pass": true,
+          "detail": "1080x1350"
+        },
+        {
+          "id": "mime",
+          "pass": true,
+          "detail": "image/jpeg"
+        },
+        {
+          "id": "codec",
+          "pass": true,
+          "detail": "n/a"
+        },
+        {
+          "id": "safe_margins",
+          "pass": true,
+          "detail": "boxes inside safe area"
+        },
+        {
+          "id": "line_through_overlap",
+          "pass": true,
+          "detail": "declared layout geometry does not overlap"
+        },
+        {
+          "id": "provenance",
+          "pass": true,
+          "detail": "code-rendered, no external media"
+        },
+        {
+          "id": "checksum",
+          "pass": true,
+          "detail": "67ee6b181c261f2e5ac3fcd37fc678be9481f07bf31f07685cde9267673b02dc"
+        },
+        {
+          "id": "aigc",
+          "pass": true,
+          "detail": "deterministic code render; no generative image model"
+        },
+        {
+          "id": "audio",
+          "pass": true,
+          "detail": "none"
+        }
+      ],
+      "taylor_pass": false,
+      "chatgpt_pass": false,
+      "pass_checksum": null,
+      "pass_config_id": null,
+      "publish_eligible": false,
+      "publication_occurred": false
+    },
+    {
+      "asset_id": "feed_1080x1350_webp",
+      "path": "assets/benchmark/busy-week-feed.webp",
+      "checksum_sha256": "c064ec8ce39f70e88195eea28ed7e265c78b0a0d89c57ccdf73826fbc7a45502",
+      "config_id": "scene-benchmark-v1",
+      "dimensions": {
+        "width": 1080,
+        "height": 1350
+      },
+      "mime": "image/webp",
+      "codec": null,
+      "safe_margins": {
+        "pass": true
+      },
+      "layout_overlap": {
+        "pass": true,
+        "overlaps": []
+      },
+      "provenance": {
+        "generator": "tr-control-plane/social-render",
+        "source": "code",
+        "external_media": false,
+        "paid_assets": false,
+        "music": false
+      },
+      "aigc": {
+        "used": false,
+        "rationale": "Original scene-based SVG rendered by sharp/ffmpeg. No generative model, no stock, no music."
+      },
+      "audio": "none",
+      "checks": [
+        {
+          "id": "dimensions",
+          "pass": true,
+          "detail": "1080x1350"
+        },
+        {
+          "id": "mime",
+          "pass": true,
+          "detail": "image/webp"
+        },
+        {
+          "id": "codec",
+          "pass": true,
+          "detail": "n/a"
+        },
+        {
+          "id": "safe_margins",
+          "pass": true,
+          "detail": "boxes inside safe area"
+        },
+        {
+          "id": "line_through_overlap",
+          "pass": true,
+          "detail": "declared layout geometry does not overlap"
+        },
+        {
+          "id": "provenance",
+          "pass": true,
+          "detail": "code-rendered, no external media"
+        },
+        {
+          "id": "checksum",
+          "pass": true,
+          "detail": "c064ec8ce39f70e88195eea28ed7e265c78b0a0d89c57ccdf73826fbc7a45502"
+        },
+        {
+          "id": "aigc",
+          "pass": true,
+          "detail": "deterministic code render; no generative image model"
+        },
+        {
+          "id": "audio",
+          "pass": true,
+          "detail": "none"
+        }
+      ],
+      "taylor_pass": false,
+      "chatgpt_pass": false,
+      "pass_checksum": null,
+      "pass_config_id": null,
+      "publish_eligible": false,
+      "publication_occurred": false
+    },
+    {
+      "asset_id": "reel_1080x1920_mp4",
+      "path": "assets/benchmark/busy-week-reel.mp4",
+      "checksum_sha256": "1a46932117389e855f50813e9f1c444031e8a7a7663dd2cfb2a0b9cdaa3e24b3",
+      "config_id": "scene-benchmark-v1",
+      "dimensions": {
+        "width": 1080,
+        "height": 1920
+      },
+      "mime": "video/mp4",
+      "codec": "h264",
+      "safe_margins": {
+        "pass": true
+      },
+      "layout_overlap": {
+        "pass": true,
+        "overlaps": []
+      },
+      "provenance": {
+        "generator": "tr-control-plane/social-render",
+        "source": "code",
+        "external_media": false,
+        "paid_assets": false,
+        "music": false
+      },
+      "aigc": {
+        "used": false,
+        "rationale": "Original scene-based SVG rendered by sharp/ffmpeg. No generative model, no stock, no music."
+      },
+      "audio": "none",
+      "checks": [
+        {
+          "id": "dimensions",
+          "pass": true,
+          "detail": "1080x1920"
+        },
+        {
+          "id": "mime",
+          "pass": true,
+          "detail": "video/mp4"
+        },
+        {
+          "id": "codec",
+          "pass": true,
+          "detail": "h264"
+        },
+        {
+          "id": "safe_margins",
+          "pass": true,
+          "detail": "boxes inside safe area"
+        },
+        {
+          "id": "line_through_overlap",
+          "pass": true,
+          "detail": "declared layout geometry does not overlap"
+        },
+        {
+          "id": "provenance",
+          "pass": true,
+          "detail": "code-rendered, no external media"
+        },
+        {
+          "id": "checksum",
+          "pass": true,
+          "detail": "1a46932117389e855f50813e9f1c444031e8a7a7663dd2cfb2a0b9cdaa3e24b3"
+        },
+        {
+          "id": "aigc",
+          "pass": true,
+          "detail": "deterministic code render; no generative image model"
+        },
+        {
+          "id": "audio",
+          "pass": true,
+          "detail": "none"
+        }
+      ],
+      "taylor_pass": false,
+      "chatgpt_pass": false,
+      "pass_checksum": null,
+      "pass_config_id": null,
+      "publish_eligible": false,
+      "publication_occurred": false
+    }
+  ],
+  "state_model_coverage": {
+    "states": 44,
+    "transitions": 57,
+    "required_fields_present": true
+  },
+  "live_integration_gaps": [
+    "Drive reads remain pointer-only; no live document sync",
+    "Metricool schedule/publish is dry-run only",
+    "CRM writes are dry-run stubs",
+    "Stripe is read/dry-run only; live charges/refunds/credits/payment links are hard-stopped",
+    "Superset delivery records are dry-run only and must never carry Zone C detail",
+    "Slack command bus is dry-run only"
+  ],
+  "external_writes": 0,
+  "publication_occurred": false,
+  "paid_spend": false,
+  "bounded_task_only": true,
+  "proof": {
+    "adapters_dry_run": true,
+    "publish_eligible": false,
+    "taylor_pass": false,
+    "chatgpt_pass": false
+  }
+}

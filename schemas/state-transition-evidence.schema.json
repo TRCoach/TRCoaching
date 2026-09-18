@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/state-transition-evidence.schema.json",
+  "title": "TR state transition evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "transition_id",
+    "from",
+    "to",
+    "event_id",
+    "recorded_at",
+    "owner",
+    "system_of_record",
+    "required_evidence",
+    "provided_evidence",
+    "guard_result",
+    "founder_gate",
+    "external_write"
+  ],
+  "properties": {
+    "transition_id": { "type": "string" },
+    "from": { "type": "string" },
+    "to": { "type": "string" },
+    "event_id": { "type": "string" },
+    "recorded_at": { "type": "string", "format": "date-time" },
+    "owner": { "type": "string" },
+    "system_of_record": {
+      "type": "string",
+      "enum": ["Drive", "Metricool", "CRM", "Stripe", "Superset", "Slack"]
+    },
+    "required_evidence": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "provided_evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    },
+    "guard_result": {
+      "type": "string",
+      "enum": ["pass", "fail_closed"]
+    },
+    "founder_gate": { "type": "boolean" },
+    "external_write": { "type": "boolean", "const": false },
+    "dry_run": { "type": "boolean", "const": true },
+    "notes": { "type": "string" }
+  }
+}

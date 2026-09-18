@@ -1,0 +1,493 @@
+{
+  "id": "tr-training-founder-actions-v1",
+  "version": "1.0.0",
+  "modeSource": "model/permissions.json currentMode only",
+  "note": "Programmable founder action cards. Buttons route only through the Control Plane service. Event payloads cannot promote mode. TEST creates audit records only and never calls a provider.",
+  "actions": [
+    {
+      "id": "run_daily_business_cycle",
+      "title": "Run Daily Business Cycle",
+      "workflowId": "wf_daily_business_cycle",
+      "stateRequirements": [
+        "inspect all commercial, marketing, learning, content, payment, blocker, job and decision lanes"
+      ],
+      "evidenceRequirements": [],
+      "owner": "Founder",
+      "system": "control_plane",
+      "allowedActions": [
+        "inspect_lanes",
+        "classify_lane_status",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "blind_agent_wakeup",
+        "provider_write",
+        "mode_promotion",
+        "publication",
+        "live_payment"
+      ],
+      "founderGate": false,
+      "success": "Founder-friendly dry-run summary of progressed, blocked, awaiting external, and founder-required lanes with an audit record and zero external writes.",
+      "failureEscalation": "Fail closed; escalate unknowns to Alex via Grok_Alex: and ChatGPT review.",
+      "auditType": "daily_cycle"
+    },
+    {
+      "id": "review_new_leads",
+      "title": "Review New Leads",
+      "workflowId": "wf_review_new_leads",
+      "stateRequirements": [
+        "social_enquiry_received",
+        "enquiry_classified"
+      ],
+      "evidenceRequirements": [
+        "non_pii_enquiry_ref"
+      ],
+      "owner": "Taylor",
+      "system": "CRM",
+      "allowedActions": [
+        "inspect_leads",
+        "plan_classify",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "store_pii",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Non-PII lead refs reviewed; Taylor next steps named; exceptions listed.",
+      "failureEscalation": "Missing enquiry refs fail closed; route blockers to Alex.",
+      "auditType": "lead_review"
+    },
+    {
+      "id": "progress_sales_pipeline",
+      "title": "Progress Sales Pipeline",
+      "workflowId": "wf_progress_sales_pipeline",
+      "stateRequirements": [
+        "qualification",
+        "offer_presented",
+        "nurture"
+      ],
+      "evidenceRequirements": [
+        "non_pii_enquiry_ref",
+        "offer_id"
+      ],
+      "owner": "Sam",
+      "system": "CRM",
+      "allowedActions": [
+        "inspect_pipeline",
+        "plan_qualify_or_offer",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "live_closed_won",
+        "live_payment_link",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Sam/Taylor pipeline steps that TEST permissions allow are planned; Closed Won stays blocked.",
+      "failureEscalation": "Payment or Closed Won attempts escalate to founder inbox; Alex routes blockers.",
+      "auditType": "sales_progress"
+    },
+    {
+      "id": "check_payments",
+      "title": "Check Payments",
+      "workflowId": "wf_check_payments",
+      "stateRequirements": [
+        "payment_pending",
+        "payment_verified"
+      ],
+      "evidenceRequirements": [
+        "stripe_payment_ref",
+        "payment_clear_owner"
+      ],
+      "owner": "Sam",
+      "system": "Stripe",
+      "allowedActions": [
+        "dry_run_inspect_stripe",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "live_charge",
+        "refund",
+        "credit",
+        "payment_link",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Stripe payment truth inspected via dry-run; Sam owns payment_clear; TEST live Closed Won remains blocked.",
+      "failureEscalation": "Missing Stripe evidence fails closed; named founder unlock stays a separate decision.",
+      "auditType": "payment_check"
+    },
+    {
+      "id": "progress_paid_clients",
+      "title": "Progress Paid Clients",
+      "workflowId": "wf_progress_paid_clients",
+      "stateRequirements": [
+        "payment_verified",
+        "closed_won",
+        "onboarding_started",
+        "active_coaching"
+      ],
+      "evidenceRequirements": [
+        "stripe_payment_ref",
+        "closed_won_commercial_ref"
+      ],
+      "owner": "Jordan",
+      "system": "Superset",
+      "allowedActions": [
+        "inspect_paid_clients",
+        "name_next_gates",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "live_closed_won",
+        "skip_consent",
+        "skip_ready",
+        "programme_golive",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Payment truth plus consent, Ready, and programme gates named; no live onboarding mutation.",
+      "failureEscalation": "Missing consent/Ready/founder go-live fail closed and surface as exceptions.",
+      "auditType": "paid_client_progress"
+    },
+    {
+      "id": "review_onboarding",
+      "title": "Review Onboarding",
+      "workflowId": "wf_review_onboarding",
+      "stateRequirements": [
+        "onboarding_started",
+        "privacy_notice_issued",
+        "health_consent_recorded"
+      ],
+      "evidenceRequirements": [
+        "onboarding_pack_version",
+        "privacy_notice_version"
+      ],
+      "owner": "Jordan",
+      "system": "Drive",
+      "allowedActions": [
+        "inspect_onboarding",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "zone_c_payload",
+        "skip_consent",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Onboarding refs reviewed against privacy notice + consent titles; screening stays blocked without explicit consent.",
+      "failureEscalation": "Missing consent blocks screening/Ready; ChatGPT reviews policy titles.",
+      "auditType": "onboarding_review"
+    },
+    {
+      "id": "review_coaching_clients",
+      "title": "Review Coaching Clients",
+      "workflowId": "wf_review_coaching_clients",
+      "stateRequirements": [
+        "assigned_welcomed",
+        "active_coaching"
+      ],
+      "evidenceRequirements": [
+        "assignment_ref"
+      ],
+      "owner": "Jordan",
+      "system": "Superset",
+      "allowedActions": [
+        "inspect_coaching_codes",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "health_judgement",
+        "zone_c_payload",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Coaching delivery codes reviewed; no Zone C and no health judgement.",
+      "failureEscalation": "Programme go-live and health/safety stay founder/human gates.",
+      "auditType": "coaching_review"
+    },
+    {
+      "id": "process_weekly_checkins",
+      "title": "Process Weekly Check-ins",
+      "workflowId": "wf_process_weekly_checkins",
+      "stateRequirements": [
+        "weekly_checkin_open",
+        "active_coaching"
+      ],
+      "evidenceRequirements": [
+        "checkin_week"
+      ],
+      "owner": "Jordan",
+      "system": "Superset",
+      "allowedActions": [
+        "inspect_checkin_codes",
+        "plan_open_close_records",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "zone_c_payload",
+        "health_judgement",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Check-in codes inspected; Cursor may only plan bounded dry-run open/close records.",
+      "failureEscalation": "Missed check-ins escalate to Alex; no clinical content on the bus.",
+      "auditType": "checkin_process"
+    },
+    {
+      "id": "review_adherence_risks",
+      "title": "Review Adherence Risks",
+      "workflowId": "wf_review_adherence_risks",
+      "stateRequirements": [
+        "adherence_escalation"
+      ],
+      "evidenceRequirements": [
+        "escalation_reason_code"
+      ],
+      "owner": "Alex",
+      "system": "Slack",
+      "allowedActions": [
+        "inspect_escalation_codes",
+        "route_blocker",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "health_judgement",
+        "zone_c_payload",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Adherence codes routed with Grok_Alex: prefix; founder only if a founder gate is involved.",
+      "failureEscalation": "Unresolved escalation stays blocked; ChatGPT reviews policy, not client health.",
+      "auditType": "adherence_review"
+    },
+    {
+      "id": "generate_next_weeks_marketing",
+      "title": "Generate Next Week’s Marketing",
+      "workflowId": "wf_generate_next_weeks_marketing",
+      "stateRequirements": [
+        "marketing_cycle_idle",
+        "marketing_cycle_analyse"
+      ],
+      "evidenceRequirements": [
+        "cycle_week"
+      ],
+      "owner": "Taylor",
+      "system": "Metricool",
+      "allowedActions": [
+        "plan_cycle",
+        "dry_run_produce",
+        "dry_run_qa",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "metricool_schedule",
+        "publication",
+        "paid_spend",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Linked dry-run tasks through plan, production, QA, Taylor PASS, ChatGPT PASS, and scheduling check. TEST stops before schedule/publish and names missing exact-final passes.",
+      "failureEscalation": "Missing dual PASS or TEST schedule permission fails closed; no Metricool write.",
+      "auditType": "marketing_generate"
+    },
+    {
+      "id": "review_marketing_performance",
+      "title": "Review Marketing Performance",
+      "workflowId": "wf_review_marketing_performance",
+      "stateRequirements": [
+        "marketing_cycle_monitor",
+        "marketing_active"
+      ],
+      "evidenceRequirements": [
+        "performance_summary_ref"
+      ],
+      "owner": "Taylor",
+      "system": "Metricool",
+      "allowedActions": [
+        "inspect_performance_pointers",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "publication",
+        "paid_spend",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Performance pointers reviewed; learning may only emit a versioned proposal.",
+      "failureEscalation": "No live analytics pull; ChatGPT reviews learning proposals.",
+      "auditType": "marketing_performance"
+    },
+    {
+      "id": "schedule_approved_content",
+      "title": "Schedule Approved Content",
+      "workflowId": "wf_schedule_approved_content",
+      "stateRequirements": [
+        "marketing_cycle_chatgpt_pass",
+        "publish_eligible"
+      ],
+      "evidenceRequirements": [
+        "taylor_pass",
+        "chatgpt_pass",
+        "pass_checksum",
+        "pass_config_id"
+      ],
+      "owner": "Taylor",
+      "system": "Metricool",
+      "allowedActions": [
+        "check_dual_pass",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "metricool_schedule",
+        "publication",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Scheduling check names whether exact-final dual PASS exists. TEST always stops before Metricool schedule/publication.",
+      "failureEscalation": "Missing exact-final passes or TEST mode block scheduling; do not publish.",
+      "auditType": "schedule_check"
+    },
+    {
+      "id": "check_publication_errors",
+      "title": "Check Publication Errors",
+      "workflowId": "wf_check_publication_errors",
+      "stateRequirements": [
+        "social_qa_recorded",
+        "publish_eligible"
+      ],
+      "evidenceRequirements": [
+        "asset_checksum",
+        "asset_config_id"
+      ],
+      "owner": "ChatGPT",
+      "system": "Metricool",
+      "allowedActions": [
+        "inspect_qa_mismatches",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "publication",
+        "provider_write"
+      ],
+      "founderGate": false,
+      "success": "Publication errors listed (missing PASS, checksum/config mismatch). publishEligible stays false unless exact dual PASS.",
+      "failureEscalation": "Any mismatch fails closed; Taylor and ChatGPT must re-PASS the exact final.",
+      "auditType": "publication_error_check"
+    },
+    {
+      "id": "run_controlled_beta_readiness_audit",
+      "title": "Run Controlled-Beta Readiness Audit",
+      "workflowId": "wf_controlled_beta_readiness_audit",
+      "stateRequirements": [
+        "trusted_mode_TEST_or_injected"
+      ],
+      "evidenceRequirements": [
+        "founder_stripe_live_unlock",
+        "founder_payment_unlock_ref"
+      ],
+      "owner": "ChatGPT",
+      "system": "Drive",
+      "allowedActions": [
+        "inspect_permission_registry",
+        "inspect_policy_titles",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "mode_promotion",
+        "provider_write",
+        "live_payment"
+      ],
+      "founderGate": true,
+      "success": "Readiness gaps listed against TEST registry, named Stripe unlock, consent/Ready/go-live gates. Mode stays TEST unless a trusted registry is injected.",
+      "failureEscalation": "Event operating_mode is ignored; agents cannot promote mode.",
+      "auditType": "beta_readiness"
+    },
+    {
+      "id": "show_founder_decisions",
+      "title": "Show Founder Decisions",
+      "workflowId": "wf_show_founder_decisions",
+      "stateRequirements": [
+        "decision_inbox_pending"
+      ],
+      "evidenceRequirements": [
+        "founder_decision_ref"
+      ],
+      "owner": "Founder",
+      "system": "Drive",
+      "allowedActions": [
+        "list_inbox",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "approve_all",
+        "provider_write",
+        "automatic_refund"
+      ],
+      "founderGate": true,
+      "success": "Per-item decision packets listed. Approve, Reject, or Request more evidence only — never approve-all.",
+      "failureEscalation": "Missing packet fails closed; TEST records the decision and never calls a provider.",
+      "auditType": "decision_list"
+    },
+    {
+      "id": "generate_weekly_ceo_brief",
+      "title": "Generate Weekly CEO Brief",
+      "workflowId": "wf_generate_weekly_ceo_brief",
+      "stateRequirements": [
+        "inspect all lanes"
+      ],
+      "evidenceRequirements": [],
+      "owner": "ChatGPT",
+      "system": "control_plane",
+      "allowedActions": [
+        "summarise_exceptions",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "include_pii",
+        "include_zone_c",
+        "provider_write",
+        "mode_promotion"
+      ],
+      "founderGate": false,
+      "success": "Non-PII weekly brief of exceptions, gates, and TEST limits. Audit recorded.",
+      "failureEscalation": "Sensitive keys fail closed; ChatGPT reviews policy titles only.",
+      "auditType": "ceo_brief"
+    },
+    {
+      "id": "run_full_business_health_check",
+      "title": "Run Full Business Health Check",
+      "workflowId": "wf_full_business_health_check",
+      "stateRequirements": [
+        "inspect all lanes",
+        "inspect adapters",
+        "inspect trusted mode"
+      ],
+      "evidenceRequirements": [],
+      "owner": "ChatGPT",
+      "system": "control_plane",
+      "allowedActions": [
+        "inspect_lanes",
+        "dry_run_ping_adapters",
+        "inspect_permissions",
+        "write_audit"
+      ],
+      "forbiddenActions": [
+        "provider_write",
+        "mode_promotion",
+        "health_judgement"
+      ],
+      "founderGate": false,
+      "success": "Whole-company health snapshot: mode, adapters dry-run, exceptions, zero writes. Not a clinical health judgement.",
+      "failureEscalation": "Unknown adapter or forbidden payload fails closed; escalate to Alex/ChatGPT.",
+      "auditType": "business_health"
+    }
+  ]
+}
