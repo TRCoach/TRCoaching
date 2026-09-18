@@ -70,6 +70,9 @@ async function handle(request: Request, env: WorkerBindings): Promise<Response> 
         unauthorizedBusinessWrites: 0,
         openaiDisabled: true,
         d1: Boolean(env.DB),
+        slackDispatchEnabled: env.SLACK_DISPATCH_ENABLED === "1",
+        slackChannelBound: Boolean(env.SLACK_AI_OPS_CHANNEL),
+        slackTokenPresent: Boolean(env.SLACK_BOT_TOKEN),
         reason: ready.reason,
         bind: "workers.dev",
       });
@@ -101,6 +104,23 @@ async function handle(request: Request, env: WorkerBindings): Promise<Response> 
       } catch {
         if (response.ok && url.pathname === "/api/login") {
           return json(503, { ok: false, reason: "founder console could not persist session", unauthorizedBusinessWrites: 0 });
+        }
+        if (
+          response.ok &&
+          (url.pathname === "/api/command" || url.pathname === "/api/rehearsal/slack" || url.pathname === "/api/rehearsal/cursor")
+        ) {
+          let existing: Record<string, unknown> = {};
+          try {
+            existing = (await response.clone().json()) as Record<string, unknown>;
+          } catch {
+            existing = {};
+          }
+          return json(503, {
+            ...existing,
+            ok: false,
+            reason: "founder console could not persist event",
+            unauthorizedBusinessWrites: 0,
+          });
         }
       }
     }

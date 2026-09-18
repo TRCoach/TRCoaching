@@ -11,7 +11,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { assertStripeReadOnlyKey, assertStripeReadOnlyRequest, collectLiveEvidence } from "../src/console/live-adapters.ts";
 import { collectEvidence } from "../src/console/evidence.ts";
-import { DispatchEngine, MemorySlackTransport } from "../src/console/dispatch.ts";
+import { DispatchEngine, LiveSlackTransport, MemorySlackTransport } from "../src/console/dispatch.ts";
+import { newId } from "../src/console/ids.ts";
 import { CursorDispatch } from "../src/console/cursor-v1.ts";
 import { ingestRehearsalStatus, runCursorRehearsal, runSlackRehearsal, SLACK_REHEARSAL_ACTION } from "../src/console/rehearsal.ts";
 import { ChatGptDispatch } from "../src/console/openai-responses.ts";
@@ -387,6 +388,8 @@ describe("founder console phase C static acceptance", () => {
     assert.match(wrangler, /workers.dev/);
     assert.match(wrangler, /d1_databases/);
     assert.match(wrangler, /FOUNDER_OPENAI_DISABLED/);
+    assert.match(wrangler, /SLACK_DISPATCH_ENABLED = "1"/);
+    assert.match(wrangler, /SLACK_AI_OPS_CHANNEL = "C0C2B0TFN48"/);
   });
 
   it("keeps bundled Worker model JSON identical to repo model files", () => {
@@ -457,5 +460,175 @@ describe("founder console worker login path without repo filesystem or D1 tables
     const loginBody = (await login.json()) as { ok?: boolean; csrf?: string };
     assert.equal(loginBody.ok, true);
     assert.ok(loginBody.csrf);
+  });
+});
+
+describe("founder console Worker-safe dispatch and Slack transport", () => {
+  const rehearsalEnvelope = {
+    prefix: "Grok_Alex:" as const,
+    kind: "OPS_EVENT" as const,
+    event_id: "evt_test1",
+    correlation_id: "corr_test1",
+    owner: "Alex",
+    current_state: "TEST",
+    bounded_action: SLACK_REHEARSAL_ACTION,
+    evidence_refs: ["TRCoach/TRCoaching"],
+    due_time: "2026-09-18T00:00:00.000Z",
+    stop_condition: "test only",
+  };
+
+  it("allocates ids from Web Crypto rather than node:crypto.randomUUID", () => {
+    const id = newId("corr");
+    assert.match(id, /^corr_[0-9a-f]{8}$/);
+    const source = readFileSync("src/console/ids.ts", "utf8");
+    assert.match(source, /globalThis\.crypto\.randomUUID/);
+    assert.equal(source.includes("node:crypto"), false);
+    assert.equal(readFileSync("src/console/service.ts", "utf8").includes('from "node:crypto"'), false);
+  });
+
+  it("treats LiveSlack non-JSON errors as failed posts and never leaks the token", async () => {
+    const calls: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      calls.push(url);
+      if (url.includes("auth.test")) {
+        return new Response("<html>bad gateway</html>", { status: 502 });
+      }
+      return new Response("<html>cloudflare</html>", { status: 502 });
+    };
+    const slack = new LiveSlackTransport("xoxb-test-token-value", "C0C2B0TFN48", true, fetchImpl);
+    assert.equal(slack.configured, true);
+    const auth = await slack.authTest();
+    assert.equal(auth.ok, false);
+    assert.match(auth.detail, /non-JSON/);
+    const posted = await slack.submit(rehearsalEnvelope);
+    assert.equal(posted.ok, false);
+    assert.match(posted.detail, /non-JSON/);
+    assert.equal(/xoxb-test-token-value/.test(`${auth.detail} ${posted.detail}`), false);
+    assert.ok(calls.some((url) => url.includes("auth.test")));
+    assert.ok(calls.some((url) => url.includes("chat.postMessage")));
+  });
+
+  it("captures Slack message ts on a successful post and joins when not_in_channel", async () => {
+    let posts = 0;
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("auth.test")) {
+        return Response.json({ ok: true, user_id: "U123" });
+      }
+      if (url.includes("conversations.join")) {
+        return Response.json({ ok: true });
+      }
+      posts += 1;
+      if (posts === 1) return Response.json({ ok: false, error: "not_in_channel" });
+      return Response.json({ ok: true, ts: "1778880000.000100" });
+    };
+    const slack = new LiveSlackTransport("xoxb-test-token-value", "C0C2B0TFN48", true, fetchImpl);
+    const auth = await slack.authTest();
+    assert.equal(auth.ok, true);
+    const posted = await slack.submit(rehearsalEnvelope);
+    assert.equal(posted.ok, true);
+    assert.equal(posted.externalId, "1778880000.000100");
+    assert.equal(posts, 2);
+  });
+
+  it("returns JSON for Worker command and Slack rehearsal without a worker exception", async () => {
+    const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
+    const env = {
+      DB: new MemoryD1(),
+      FOUNDER_SESSION_SECRET: "tr-founder-phase-c-session-secret-32ch",
+      FOUNDER_AUTH_PASSWORD_HASH: hash,
+      FOUNDER_OPENAI_DISABLED: "1",
+      SLACK_DISPATCH_ENABLED: "0",
+      SLACK_AI_OPS_CHANNEL: "C0C2B0TFN48",
+    };
+    const health = await worker.fetch(new Request("https://tr-founder-console.workers.dev/api/health"), env);
+    const healthBody = (await health.json()) as {
+      slackDispatchEnabled?: boolean;
+      slackChannelBound?: boolean;
+      slackTokenPresent?: boolean;
+    };
+    assert.equal(healthBody.slackDispatchEnabled, false);
+    assert.equal(healthBody.slackChannelBound, true);
+    assert.equal(healthBody.slackTokenPresent, false);
+    const login = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "founder", password: "phase-c-test-password" }),
+      }),
+      env,
+    );
+    const loginBody = (await login.json()) as { csrf: string };
+    const cookie = login.headers.get("set-cookie") ?? "";
+    const command = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/command", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie, "x-csrf-token": loginBody.csrf },
+        body: JSON.stringify({ text: "Progress everything that can be progressed today." }),
+      }),
+      env,
+    );
+    assert.equal(command.status, 200);
+    const commandBody = (await command.json()) as { reason?: string; founderFriendlySummary?: string; ok?: boolean };
+    assert.notEqual(commandBody.reason, "founder console worker exception");
+    assert.match(commandBody.founderFriendlySummary ?? "", /Progress everything/);
+    const rehearsal = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/rehearsal/slack", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie, "x-csrf-token": loginBody.csrf },
+        body: "{}",
+      }),
+      env,
+    );
+    assert.equal(rehearsal.status, 200);
+    const rehearsalBody = (await rehearsal.json()) as {
+      ok?: boolean;
+      reason?: string;
+      slackAuth?: boolean;
+      job?: { externalId?: string; status?: string };
+    };
+    assert.notEqual(rehearsalBody.reason, "founder console worker exception");
+    assert.equal(rehearsalBody.ok, true);
+    assert.equal(rehearsalBody.slackAuth, true);
+    assert.ok(rehearsalBody.job?.externalId);
+    assert.equal(rehearsalBody.job?.status, "AWAITING_EXTERNAL");
+  });
+
+  it("surfaces D1 persist failure after rehearsal without dropping the captured Slack ts", async () => {
+    const db = new MemoryD1();
+    const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
+    const env = {
+      DB: db,
+      FOUNDER_SESSION_SECRET: "tr-founder-phase-c-session-secret-32ch",
+      FOUNDER_AUTH_PASSWORD_HASH: hash,
+      FOUNDER_OPENAI_DISABLED: "1",
+    };
+    const login = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "founder", password: "phase-c-test-password" }),
+      }),
+      env,
+    );
+    const loginBody = (await login.json()) as { csrf: string };
+    const cookie = login.headers.get("set-cookie") ?? "";
+    db.batch = async () => {
+      throw new Error("d1 projection failed");
+    };
+    const rehearsal = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/rehearsal/slack", {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie, "x-csrf-token": loginBody.csrf },
+        body: "{}",
+      }),
+      env,
+    );
+    assert.equal(rehearsal.status, 503);
+    const body = (await rehearsal.json()) as { ok?: boolean; reason?: string; job?: { externalId?: string } };
+    assert.equal(body.ok, false);
+    assert.match(body.reason ?? "", /persist event/);
+    assert.ok(body.job?.externalId);
   });
 });

@@ -25,8 +25,8 @@ FOUNDER_OPENAI_DISABLED = "1"
 FOUNDER_AUTH_USER = "founder"
 CURSOR_ALLOW_REPO = "TRCoach/TRCoaching"
 CURSOR_STARTING_REF = "cursor/tr-training-control-plane-fcd0"
-SLACK_DISPATCH_ENABLED = "0"
-SLACK_AI_OPS_CHANNEL = "#ai-ops"
+SLACK_DISPATCH_ENABLED = "1"
+SLACK_AI_OPS_CHANNEL = "C0C2B0TFN48"
 
 # Secrets (wrangler secret put) — never commit values:
 # FOUNDER_SESSION_SECRET

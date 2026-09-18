@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { newId } from "./ids.js";
 import { invokeAdapter } from "../adapters/dry-run.js";
 import { assertDryRun } from "../adapters/contracts.js";
 import { loadLifecycle } from "../engine/state-engine.js";
@@ -68,10 +68,6 @@ const TERMINAL_STATUSES = new Set<ActivityStatus>(["completed", "published"]);
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-function newId(prefix: string): string {
-  return `${prefix}_${randomUUID().slice(0, 8)}`;
 }
 
 function inspectAdapter(system: SystemOfRecord, action: string, evidence: EvidenceMap) {
@@ -957,7 +953,14 @@ export class ConsoleService {
   }
 
   async rehearsalSlack() {
-    return runSlackRehearsal(this.store, this.permissions, this.dispatch.slack);
+    const result = await runSlackRehearsal(this.store, this.permissions, this.dispatch.slack);
+    const auth = await this.dispatch.slack.authTest();
+    return {
+      ...result,
+      slackAuth: auth.ok,
+      slackAuthDetail: auth.detail,
+      unauthorizedBusinessWrites: 0 as const,
+    };
   }
 
   async rehearsalCursor(cursor?: CursorDispatch) {

@@ -1,5 +1,5 @@
-import { randomBytes } from "node:crypto";
 import { permissionAllowed, resolveMode, type PermissionRegistry } from "../permissions.js";
+import { newId } from "./ids.js";
 import type { EvidenceMap } from "../types.js";
 import type { ConsoleStore, DispatchStatus, StoredJob } from "./store.js";
 import type { EvidenceCard, EvidenceEnv } from "./evidence.js";
@@ -41,6 +41,7 @@ export interface SlackTransport {
   configured: boolean;
   submit(envelope: OpsEnvelope): Promise<{ ok: boolean; externalId?: string; detail: string }>;
   collect(jobs: StoredJob[]): Promise<SlackCollectResult>;
+  authTest(): Promise<{ ok: boolean; detail: string }>;
 }
 
 export class MemorySlackTransport implements SlackTransport {
@@ -57,6 +58,9 @@ export class MemorySlackTransport implements SlackTransport {
     this.posts.push(envelope);
     return { ok: true, externalId: `slack_${envelope.event_id}`, detail: "fake slack accepted" };
   }
+  async authTest() {
+    return { ok: true, detail: "memory transport" };
+  }
   async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
     return collectOpsStatusMessages(this.inbox, jobs);
   }
@@ -67,6 +71,7 @@ export class LiveSlackTransport implements SlackTransport {
     private token: string | undefined,
     private channel: string | undefined,
     private enabled: boolean,
+    private fetchImpl: typeof fetch = fetch,
   ) {}
   get configured(): boolean {
     return Boolean(this.enabled && this.token && this.channel && /^#?ai-ops$|^C[A-Z0-9]+$/.test(this.channel));
@@ -86,7 +91,20 @@ export class LiveSlackTransport implements SlackTransport {
       `due_time=${envelope.due_time}`,
       `stop_condition=${envelope.stop_condition}`,
     ].join("\n");
-    const response = await fetch("https://slack.com/api/chat.postMessage", {
+    try {
+      const posted = await this.postMessage(text);
+      if (!posted.ok && posted.error === "not_in_channel") {
+        const joined = await this.joinChannel();
+        if (joined.ok) return this.postMessage(text);
+        return { ok: false, detail: `Slack API: not_in_channel (${joined.detail})` };
+      }
+      return posted;
+    } catch {
+      return { ok: false, detail: "Slack API: request failed" };
+    }
+  }
+  private async postMessage(text: string): Promise<{ ok: boolean; externalId?: string; detail: string; error?: string }> {
+    const response = await this.fetchImpl("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {
         authorization: `Bearer ${this.token}`,
@@ -94,24 +112,89 @@ export class LiveSlackTransport implements SlackTransport {
       },
       body: JSON.stringify({ channel: this.channel, text, unfurl_links: false }),
     });
-    const body = (await response.json()) as { ok?: boolean; ts?: string; error?: string };
-    if (!body.ok) return { ok: false, detail: `Slack API: ${body.error ?? response.status}` };
+    const raw = await response.text();
+    let body: { ok?: boolean; ts?: string; error?: string };
+    try {
+      body = JSON.parse(raw) as { ok?: boolean; ts?: string; error?: string };
+    } catch {
+      return { ok: false, detail: `Slack API: non-JSON ${response.status}` };
+    }
+    if (!body.ok) return { ok: false, detail: `Slack API: ${body.error ?? response.status}`, error: body.error };
     return { ok: true, externalId: body.ts, detail: "posted to allowlisted #ai-ops" };
+  }
+  private async joinChannel(): Promise<{ ok: boolean; detail: string }> {
+    if (!this.channel || !/^C[A-Z0-9]+$/.test(this.channel)) {
+      return { ok: false, detail: "channel id required to join" };
+    }
+    try {
+      const response = await this.fetchImpl("https://slack.com/api/conversations.join", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${this.token}`,
+          "content-type": "application/json; charset=utf-8",
+        },
+        body: JSON.stringify({ channel: this.channel }),
+      });
+      const raw = await response.text();
+      let body: { ok?: boolean; error?: string };
+      try {
+        body = JSON.parse(raw) as { ok?: boolean; error?: string };
+      } catch {
+        return { ok: false, detail: `join non-JSON ${response.status}` };
+      }
+      if (!body.ok) return { ok: false, detail: body.error ?? "join failed" };
+      return { ok: true, detail: "joined allowlisted channel" };
+    } catch {
+      return { ok: false, detail: "join request failed" };
+    }
+  }
+  async authTest(): Promise<{ ok: boolean; detail: string }> {
+    if (!this.token) return { ok: false, detail: "missing Slack token" };
+    try {
+      const response = await this.fetchImpl("https://slack.com/api/auth.test", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${this.token}`,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+      });
+      const raw = await response.text();
+      let body: { ok?: boolean; error?: string };
+      try {
+        body = JSON.parse(raw) as { ok?: boolean; error?: string };
+      } catch {
+        return { ok: false, detail: `auth.test non-JSON ${response.status}` };
+      }
+      if (!body.ok) return { ok: false, detail: body.error ?? "auth.test failed" };
+      return { ok: true, detail: "auth.test ok" };
+    } catch {
+      return { ok: false, detail: "auth.test request failed" };
+    }
   }
   async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
     if (!this.configured) return { statuses: [], rejected: [] };
-    const response = await fetch(
-      `https://slack.com/api/conversations.history?channel=${encodeURIComponent(this.channel ?? "")}&limit=50`,
-      { headers: { authorization: `Bearer ${this.token}` } },
-    );
-    const body = (await response.json()) as { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
-    if (!body.ok) {
-      return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${body.error ?? response.status}` }] };
+    try {
+      const response = await this.fetchImpl(
+        `https://slack.com/api/conversations.history?channel=${encodeURIComponent(this.channel ?? "")}&limit=50`,
+        { headers: { authorization: `Bearer ${this.token}` } },
+      );
+      const raw = await response.text();
+      let body: { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
+      try {
+        body = JSON.parse(raw) as { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
+      } catch {
+        return { statuses: [], rejected: [{ detail: "", reason: `Slack history: non-JSON ${response.status}` }] };
+      }
+      if (!body.ok) {
+        return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${body.error ?? response.status}` }] };
+      }
+      return collectOpsStatusMessages(
+        (body.messages ?? []).map((item) => item.text ?? ""),
+        jobs,
+      );
+    } catch {
+      return { statuses: [], rejected: [{ detail: "", reason: "Slack history: request failed" }] };
     }
-    return collectOpsStatusMessages(
-      (body.messages ?? []).map((item) => item.text ?? ""),
-      jobs,
-    );
   }
 }
 
@@ -175,10 +258,6 @@ export interface RefreshResult {
   jobs: StoredJob[];
   unauthorizedBusinessWrites: 0;
   authorisedGovernedDispatchCount: number;
-}
-
-function newId(prefix: string): string {
-  return `${prefix}_${randomBytes(5).toString("hex")}`;
 }
 
 export class DispatchEngine {

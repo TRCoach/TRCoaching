@@ -1,8 +1,8 @@
-import { randomBytes } from "node:crypto";
 import type { PermissionRegistry } from "../permissions.js";
 import { resolveMode } from "../permissions.js";
 import { CursorDispatch, CURSOR_ALLOW_REPO_EXACT } from "./cursor-v1.js";
 import type { SlackTransport, OpsEnvelope } from "./dispatch.js";
+import { newId } from "./ids.js";
 import { parseGrokAlexOpsStatus, validateOpsStatusAgainstJob } from "./ops-status.js";
 import type { ConsoleStore, StoredJob } from "./store.js";
 
@@ -11,7 +11,7 @@ export const CURSOR_REHEARSAL_ACTION = "cursor_bounded_rehearsal";
 export const CURSOR_REHEARSAL_REF = "cursor/tr-training-control-plane-fcd0";
 
 function id(prefix: string): string {
-  return `${prefix}_${randomBytes(5).toString("hex")}`;
+  return newId(prefix);
 }
 
 export async function runSlackRehearsal(
