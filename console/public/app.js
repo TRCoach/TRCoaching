@@ -18,7 +18,16 @@ async function api(path, init) {
             ...(init?.headers ?? {}),
         },
     });
-    const data = (await response.json());
+    const raw = await response.text();
+    let data;
+    try {
+        data = JSON.parse(raw);
+    }
+    catch {
+        throw new Error(response.ok
+            ? "Founder Console API returned a non-JSON response"
+            : `Founder Console API unavailable (${response.status})`);
+    }
     if (!response.ok)
         throw new Error(data.reason ?? `${response.status}`);
     return data;

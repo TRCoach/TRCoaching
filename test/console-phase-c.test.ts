@@ -209,6 +209,43 @@ describe("founder console phase C rehearsals", () => {
 });
 
 describe("founder console phase C worker and HTTP", () => {
+  it("verifies PBKDF2 via Web Crypto and never throws on unsupported hashes", async () => {
+    const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
+    assert.equal(await FounderAuth.verifyPassword("phase-c-test-password", hash), true);
+    assert.equal(await FounderAuth.verifyPassword("wrong-password", hash), false);
+    assert.equal(await FounderAuth.verifyPassword("x", "not-a-hash"), false);
+    assert.equal(await FounderAuth.verifyPassword("x", "scrypt"), false);
+    const nodeHash = Buffer.from(await FounderAuth.derivePbkdf2("phase-c-test-password", "c-salt", 310000)).toString("hex");
+    assert.equal(hash.endsWith(`$${nodeHash}`), true);
+  });
+
+  it("returns JSON for Worker login even when persistence fails", async () => {
+    const db = new MemoryD1();
+    db.batch = async () => {
+      throw new Error("d1 projection failed");
+    };
+    const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
+    const env = {
+      DB: db,
+      FOUNDER_SESSION_SECRET: "tr-founder-phase-c-session-secret-32ch",
+      FOUNDER_AUTH_PASSWORD_HASH: hash,
+      FOUNDER_OPENAI_DISABLED: "1",
+    };
+    const login = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "founder", password: "phase-c-test-password" }),
+      }),
+      env,
+    );
+    assert.equal(login.headers.get("content-type")?.includes("application/json"), true);
+    const body = (await login.json()) as { ok?: boolean; reason?: string };
+    assert.equal(login.status, 503);
+    assert.equal(body.ok, false);
+    assert.match(body.reason ?? "", /persist session/);
+  });
+
   it("blocks anonymous Worker API access and supports PBKDF2 login/CSRF", async () => {
     const db = new MemoryD1();
     const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");

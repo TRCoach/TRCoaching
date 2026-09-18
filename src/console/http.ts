@@ -223,7 +223,7 @@ async function api(
       return;
     }
     const ip = req.socket.remoteAddress ?? "local";
-    const result = auth.login(String(body.username ?? ""), String(body.password ?? ""), ip);
+    const result = await auth.login(String(body.username ?? ""), String(body.password ?? ""), ip);
     if (!result.ok || !result.token || !result.session) {
       send(res, result.status, { ok: false, reason: result.reason });
       return;

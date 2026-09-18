@@ -41,24 +41,41 @@ export class FounderAuth {
     return `pbkdf2$${iterations}$${salt}$${hash}`;
   }
 
-  static verifyPassword(password: string, encoded: string): boolean {
-    const parts = encoded.split("$");
-    const scheme = parts[0];
-    if (scheme === "pbkdf2") {
-      const iterations = Number(parts[1]);
-      const salt = parts[2];
-      const hash = parts[3];
-      if (!iterations || !salt || !hash) return false;
-      const actual = pbkdf2Sync(password, salt, iterations, 32, "sha256");
+  static async derivePbkdf2(password: string, salt: string, iterations: number): Promise<Buffer> {
+    if (globalThis.crypto?.subtle) {
+      const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+      const bits = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: new TextEncoder().encode(salt), iterations, hash: "SHA-256" },
+        key,
+        256,
+      );
+      return Buffer.from(bits);
+    }
+    return pbkdf2Sync(password, salt, iterations, 32, "sha256");
+  }
+
+  static async verifyPassword(password: string, encoded: string): Promise<boolean> {
+    try {
+      const parts = encoded.split("$");
+      const scheme = parts[0];
+      if (scheme === "pbkdf2") {
+        const iterations = Number(parts[1]);
+        const salt = parts[2];
+        const hash = parts[3];
+        if (!iterations || !salt || !hash) return false;
+        const actual = await FounderAuth.derivePbkdf2(password, salt, iterations);
+        const expected = Buffer.from(hash, "hex");
+        return actual.length === expected.length && timingSafeEqual(actual, expected);
+      }
+      const salt = parts[1];
+      const hash = parts[2];
+      if (scheme !== "scrypt" || !salt || !hash) return false;
+      const actual = Buffer.from(scryptSync(password, salt, 32));
       const expected = Buffer.from(hash, "hex");
       return actual.length === expected.length && timingSafeEqual(actual, expected);
+    } catch {
+      return false;
     }
-    const salt = parts[1];
-    const hash = parts[2];
-    if (scheme !== "scrypt" || !salt || !hash) return false;
-    const actual = scryptSync(password, salt, 32);
-    const expected = Buffer.from(hash, "hex");
-    return actual.length === expected.length && timingSafeEqual(actual, expected);
   }
 
   static testing(): AuthConfig {
@@ -75,12 +92,12 @@ export class FounderAuth {
     return createHash("sha256").update(`${this.config.sessionSecret}:${token}`).digest("hex");
   }
 
-  login(username: string, password: string, ip: string): AuthResult {
+  async login(username: string, password: string, ip: string): Promise<AuthResult> {
     if (!this.rateOk(ip)) {
       return { ok: false, status: 429, reason: "login rate limit" };
     }
     const userOk = username === this.config.username;
-    const passOk = FounderAuth.verifyPassword(password, this.config.passwordHash);
+    const passOk = await FounderAuth.verifyPassword(password, this.config.passwordHash);
     if (!userOk || !passOk) {
       this.recordAttempt(ip);
       return { ok: false, status: 401, reason: "invalid founder credentials" };

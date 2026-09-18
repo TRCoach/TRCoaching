@@ -138,10 +138,10 @@ describe("founder console phase B", () => {
     }
   });
 
-  it("expires sessions and rate-limits login", () => {
+  it("expires sessions and rate-limits login", async () => {
     const store = new MemoryStore();
     const auth = new FounderAuth(store, FounderAuth.testing());
-    const ok = auth.login("founder", "phase-b-test-password", "127.0.0.1");
+    const ok = await auth.login("founder", "phase-b-test-password", "127.0.0.1");
     assert.equal(ok.ok, true);
     store.exclusive((data) => {
       const session = data.sessions[0];
@@ -149,9 +149,9 @@ describe("founder console phase B", () => {
     });
     assert.equal(auth.resolve(ok.token), undefined);
     for (let i = 0; i < 5; i += 1) {
-      assert.equal(auth.login("founder", "nope", "203.0.113.9").status, 401);
+      assert.equal((await auth.login("founder", "nope", "203.0.113.9")).status, 401);
     }
-    assert.equal(auth.login("founder", "nope", "203.0.113.9").status, 429);
+    assert.equal((await auth.login("founder", "nope", "203.0.113.9")).status, 429);
   });
 
   it("customization cannot change catalog permissions", () => {

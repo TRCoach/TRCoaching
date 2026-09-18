@@ -41,6 +41,19 @@ function withSecurity(response: Response): Response {
 
 export default {
   async fetch(request: Request, env: WorkerBindings): Promise<Response> {
+    try {
+      return await handle(request, env);
+    } catch {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/")) {
+        return json(500, { ok: false, reason: "founder console worker exception", unauthorizedBusinessWrites: 0 });
+      }
+      return new Response("founder console unavailable", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+  },
+};
+
+async function handle(request: Request, env: WorkerBindings): Promise<Response> {
     const url = new URL(request.url);
     if (!url.pathname.startsWith("/api/") && env.ASSETS) {
       return withSecurity(await env.ASSETS.fetch(request));
@@ -124,11 +137,18 @@ export default {
 
     const response = await route(service, auth, request, url, env);
     if (request.method !== "GET") {
-      await d1.save(store.load(), snapshot.revision);
+      try {
+        await d1.save(store.load(), snapshot.revision);
+      } catch {
+        if (response.ok && url.pathname === "/api/login") {
+          return json(503, { ok: false, reason: "founder console could not persist session", unauthorizedBusinessWrites: 0 });
+        }
+      }
     }
     return response;
-  },
-};
+}
+
+
 
 async function route(
   service: ConsoleService,
@@ -152,7 +172,7 @@ async function route(
       return json(400, { ok: false, reason: `sensitive keys rejected: ${forbiddenKeys(body).join(", ")}` });
     }
     const ip = request.headers.get("cf-connecting-ip") ?? "remote";
-    const result = auth.login(String(body.username ?? ""), String(body.password ?? ""), ip);
+    const result = await auth.login(String(body.username ?? ""), String(body.password ?? ""), ip);
     if (!result.ok || !result.token || !result.session) return json(result.status, { ok: false, reason: result.reason });
     const cookies = new Headers();
     cookies.append("set-cookie", sessionCookie(result.token, true));
