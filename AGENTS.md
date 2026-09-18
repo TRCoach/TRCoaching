@@ -52,11 +52,13 @@ Sales (conversations/objections/conversions), coaching (adherence/check-ins/prog
 
 Weekly marketing cycle: analyse → generate → produce → QA → TAYLOR PASS → CHATGPT PASS → Metricool schedule → monitor → next-cycle learning.
 
-Operating mode registry: `model/permissions.json` (`TEST` now, beta target 25 Sep 2026, then `CONTROLLED_BETA` / `LIVE` by founder unlock only).
+Operating mode registry: `model/permissions.json` (`TEST` now, beta target 25 Sep 2026). `CONTROLLED_BETA` can accept paying founding clients after a **named founder Stripe-live/payment unlock**; that does not promote the whole business to LIVE. Sam owns `payment_clear`. Refunds/credits may be founder-authorised per case in CONTROLLED_BETA or LIVE — never automatic.
 
 ## Exact safety gates
 
 - Test-mode payment cannot become live Closed Won
+- CONTROLLED_BETA paying clients need a named founder Stripe-live unlock (not whole-business LIVE). Sam owns payment_clear.
+- Refund/credit is per-case founder-only in CONTROLLED_BETA or LIVE; never automatic
 - Missing explicit health consent blocks screening and Ready
 - Ready cannot bypass human evidence
 - Programme assignment is blocked without founder approval

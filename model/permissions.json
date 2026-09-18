@@ -10,17 +10,20 @@
     "autonomous-within-boundaries",
     "managed-by-exception"
   ],
-  "note": "Founder unlocks are recorded as Drive decision titles + env placeholders only. Agents cannot promote mode or self-modify policy.",
+  "note": "Founder unlocks are recorded as Drive decision titles + env placeholders only. Agents cannot promote mode or self-modify policy. CONTROLLED_BETA can accept paying founding clients after an explicit separate founder Stripe-live/payment unlock; that unlock does not promote the whole business to LIVE.",
   "unlocks": [
     {
       "id": "payments",
       "capability": "payments",
-      "title": "Live Stripe charges, payment links, and livemode Closed Won",
-      "founderUnlock": "Founder records LIVE mode plus Stripe Package READY FOR LIVE evidence. Sam still owns payment_clear.",
-      "allowedIn": ["LIVE"],
+      "title": "Founding-client live Stripe payments and livemode Closed Won",
+      "founderUnlock": "Named founder Stripe-live/payment unlock evidence (founder_stripe_live_unlock + founder_payment_unlock_ref) against the Stripe Package READY FOR LIVE title. Separate from whole-business LIVE promotion. Sam still owns payment_clear. TEST stays blocked.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
       "maturity": "approval-gated",
       "defaultInTest": "blocked",
-      "wake": "Sam"
+      "wake": "Sam",
+      "paymentClearOwner": "Sam",
+      "separateFromWholeBusinessLive": true,
+      "namedEvidence": ["founder_stripe_live_unlock", "founder_payment_unlock_ref"]
     },
     {
       "id": "sales_messaging",
@@ -65,12 +68,15 @@
     {
       "id": "refunds_credits",
       "capability": "refunds_credits",
-      "title": "Stripe refunds or credits",
-      "founderUnlock": "Every refund/credit requires a founder decision. LIVE mode still does not auto-refund.",
-      "allowedIn": ["LIVE"],
+      "title": "Founder-authorised Stripe refunds or credits",
+      "founderUnlock": "Per-case founder_refund_credit_decision + founder_decision_ref. Allowed in CONTROLLED_BETA and LIVE. Human-only; never automatic. TEST stays blocked.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
       "maturity": "managed-by-exception",
       "defaultInTest": "blocked",
-      "wake": "Founder"
+      "wake": "Founder",
+      "perCase": true,
+      "neverAutomatic": true,
+      "namedEvidence": ["founder_refund_credit_decision", "founder_decision_ref"]
     },
     {
       "id": "privacy_legal_exceptions",

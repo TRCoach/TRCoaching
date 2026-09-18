@@ -14,7 +14,9 @@ Routine events should wake the named owner (and a Cursor worker only when the ac
 | Sales/coaching/marketing learning proposal | Sam / Jordan / Taylor | No — proposal only |
 | Learning review | ChatGPT | No |
 | SOP/rule change | Founder | Yes — Drive remains policy SoT |
-| Ready / programme go-live / refund / credit | Jordan then Founder | Yes |
+| Ready / programme go-live | Jordan then Founder | Yes |
+| Paying founding client (Closed Won) | Sam (`payment_clear`) | Named founder Stripe-live unlock; CONTROLLED_BETA is enough — do not promote the whole business to LIVE |
+| Refund / credit | Founder per case | Yes in CONTROLLED_BETA or LIVE; never automatic |
 
 Agents never self-modify policy. Learning writes a versioned proposal (`proposal_version` + `learning_domain`). ChatGPT reviews. Founder may record an SOP change pointer on Drive. The engine does not rewrite Drive policy documents.
 
@@ -28,4 +30,4 @@ In current mode `TEST` (beta target **25 Sep 2026**), schedule stays dry-run and
 
 `assisted → approval-gated → autonomous-within-boundaries → managed-by-exception`
 
-TEST is assisted/approval-gated. CONTROLLED_BETA may unlock routine coaching comms and dual-PASS scheduling. LIVE still never auto-refunds, never self-modifies policy, and never bypasses Ready or founder go-live. Registry: `model/permissions.json`.
+TEST is assisted/approval-gated and **blocks payments**. CONTROLLED_BETA may accept paying founding clients after an **explicit separate** founder Stripe-live/payment unlock (`founder_stripe_live_unlock` + `founder_payment_unlock_ref`); that unlock does not promote the whole business to LIVE. Sam still owns `payment_clear`. Founder-authorised refund/credit is allowed in CONTROLLED_BETA and LIVE only as a per-case human decision — never automatic. LIVE still never self-modifies policy and never bypasses Ready or founder go-live. Registry: `model/permissions.json`. This repo stays `TEST` and dry-run.

@@ -384,7 +384,8 @@
       },
       "nextTrigger": "start_onboarding",
       "founderGate": false,
-      "idempotencyKey": "mark_closed_won:{closed_won_commercial_ref}"
+      "idempotencyKey": "mark_closed_won:{closed_won_commercial_ref}",
+      "requiredPermission": "payments"
     },
     {
       "id": "t_start_onboarding",
@@ -801,7 +802,8 @@
       },
       "nextTrigger": "open_weekly_checkin",
       "founderGate": false,
-      "idempotencyKey": "accept_renewal:{renewal_offer_ref}"
+      "idempotencyKey": "accept_renewal:{renewal_offer_ref}",
+      "requiredPermission": "payments"
     },
     {
       "id": "t_cancel_from_active",
@@ -922,7 +924,8 @@
       },
       "nextTrigger": "complete_offboarding",
       "founderGate": true,
-      "idempotencyKey": "founder_refund_credit_decision:{closed_won_commercial_ref}:{founder_decision_ref}"
+      "idempotencyKey": "founder_refund_credit_decision:{closed_won_commercial_ref}:{founder_decision_ref}",
+      "requiredPermission": "refunds_credits"
     },
     {
       "id": "t_complete_offboarding",

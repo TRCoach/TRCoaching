@@ -10,7 +10,7 @@ As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 —
 | --- | --- |
 | `npm ci` | pass |
 | `npm run build` | pass |
-| `npm test` | pass (21/21), including the required negative cases plus learning/permission tests |
+| `npm test` | pass (24/24), including the required negative cases plus learning/permission and CONTROLLED_BETA payment-unlock tests |
 | `npm run validate` | pass — 44 states, 57 transitions, all required fields present |
 | `npm run benchmark:social` | pass — local files only |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |
@@ -34,14 +34,16 @@ Storyboard JSON + three scene JPEGs are the deterministic video-equivalent if H.
 - 57 transitions, each with the 13 required fields
 - Parallel tracks: commercial, marketing_cycle, learning (learning does not consume commercial state)
 - Permission registry `model/permissions.json`: mode `TEST`, beta target 25 Sep 2026
-- Happy path + fail-closed negatives + learning/self-modify + TEST schedule block in `test/`
+- Payments `allowedIn` CONTROLLED_BETA and LIVE only with named founder Stripe-live unlock; TEST blocked; Sam owns payment_clear; whole-business LIVE not required
+- Refunds/credits `allowedIn` CONTROLLED_BETA and LIVE as per-case human founder decisions; never automatic
+- Happy path + fail-closed negatives + learning/self-modify + TEST schedule block + CONTROLLED_BETA payment unlock tests in `test/`
 
 ## Live-integration gaps
 
 - Drive: titles and env placeholders only; no live document sync
 - Metricool: dry-run; no schedule or publish
 - CRM: dry-run stubs
-- Stripe: dry-run/read evidence only; live charges/refunds/credits/payment links hard-stopped
+- Stripe: dry-run/read evidence only; no live charges/refunds/credits/payment links in this task. CONTROLLED_BETA paying-client path is permission-modelled only.
 - Superset: dry-run delivery codes; no Zone C on the bus
 - Slack: convention only (`Grok_Alex:` + one bounded task); no live write
 - Mode promotion to CONTROLLED_BETA/LIVE is a founder unlock, not an agent action

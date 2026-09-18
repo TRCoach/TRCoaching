@@ -20,6 +20,10 @@ function liveWonEvidence(): EvidenceMap {
     ...SHARED,
     stripe_livemode: true,
     payment_mode: "live",
+    operating_mode: "CONTROLLED_BETA",
+    founder_stripe_live_unlock: true,
+    founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+    payment_clear_owner: "Sam",
   };
 }
 
@@ -36,6 +40,10 @@ function toClosedWon(target: StateEngine) {
       stripe_status: "succeeded",
       closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
       payment_mode: "live",
+      operating_mode: "CONTROLLED_BETA",
+      founder_stripe_live_unlock: true,
+      founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+      payment_clear_owner: "Sam",
     }),
   ]);
 }
@@ -229,16 +237,31 @@ describe("fail-closed guards", () => {
     assert.equal(autoRefund.status, "rejected");
     assert.match(autoRefund.reason ?? "", /cancellation refund\/credit routes to founder/);
 
+    const automatic = target.apply(
+      event("founder_refund_credit_decision", "Founder", {
+        cancellation_reason_code: "client_request",
+        founder_refund_credit_decision: "refund_approved",
+        founder_decision_ref: "FD-REF-AUTO",
+        closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
+        operating_mode: "CONTROLLED_BETA",
+        automatic_refund: true,
+      }),
+    );
+    assert.equal(automatic.status, "rejected");
+    assert.match(automatic.reason ?? "", /per-case and human-only/);
+
     const founder = target.apply(
       event("founder_refund_credit_decision", "Founder", {
         cancellation_reason_code: "client_request",
         founder_refund_credit_decision: "refund_approved",
         founder_decision_ref: "FD-REF-1",
         closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
+        operating_mode: "CONTROLLED_BETA",
       }),
     );
     assert.equal(founder.status, "applied");
     assert.equal(founder.founderGate, true);
     assert.equal(founder.nextTrigger, "complete_offboarding");
+    assert.equal(founder.externalWrite, false);
   });
 });

@@ -10,6 +10,8 @@ No live Stripe activation/charges/refunds/credits/payment links. No paid spend. 
 # Fail-closed gates
 
 - Test-mode payment cannot become live Closed Won
+- CONTROLLED_BETA paying clients require a named founder Stripe-live unlock; this is not whole-business LIVE. Sam owns payment_clear. TEST stays blocked.
+- Refund/credit is per-case founder-only in CONTROLLED_BETA or LIVE; never automatic
 - Missing explicit health consent blocks screening/Ready
 - Ready cannot bypass human evidence
 - Programme assignment blocked without founder approval

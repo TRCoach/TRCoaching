@@ -22,6 +22,11 @@
           "capability": { "type": "string" },
           "founderUnlock": { "type": "string" },
           "allowedIn": { "type": "array", "items": { "type": "string" } },
+          "namedEvidence": { "type": "array", "items": { "type": "string" } },
+          "paymentClearOwner": { "type": "string", "const": "Sam" },
+          "separateFromWholeBusinessLive": { "type": "boolean" },
+          "perCase": { "type": "boolean" },
+          "neverAutomatic": { "type": "boolean" },
           "maturity": {
             "type": "string",
             "enum": [

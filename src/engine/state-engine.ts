@@ -11,7 +11,7 @@ import type {
   LifecycleModel,
   LifecycleTransition,
 } from "../types.js";
-import { loadPermissions, permissionAllowed } from "../permissions.js";
+import { loadPermissions, permissionAllowed, resolveMode } from "../permissions.js";
 import { missingEvidence, runGuard } from "./guards.js";
 import { wakeFor } from "./wake.js";
 import type { LifecycleTrack } from "../types.js";
@@ -156,7 +156,9 @@ export class StateEngine {
     }
 
     if (transition.requiredPermission) {
-      const permitted = permissionAllowed(loadPermissions(), transition.requiredPermission);
+      const registry = loadPermissions();
+      const mode = resolveMode(registry, evidence);
+      const permitted = permissionAllowed(registry, transition.requiredPermission, mode, evidence);
       if (!permitted.ok) {
         return reject(event, permitted.reason ?? "permission denied");
       }

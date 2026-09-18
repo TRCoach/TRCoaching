@@ -18,11 +18,15 @@
     "stripe_livemode": true,
     "stripe_status": "succeeded",
     "closed_won_commercial_ref": "CW-EXAMPLE-001",
-    "payment_mode": "live"
+    "payment_mode": "live",
+    "operating_mode": "CONTROLLED_BETA",
+    "founder_stripe_live_unlock": true,
+    "founder_payment_unlock_ref": "FD-STRIPE-LIVE-CONTROLLED-BETA",
+    "payment_clear_owner": "Sam"
   },
   "guard_result": "pass",
   "founder_gate": false,
   "external_write": false,
   "dry_run": true,
-  "notes": "Fixture only. No live Stripe call was made."
+  "notes": "Fixture only. CONTROLLED_BETA + named founder Stripe-live unlock. No live Stripe call was made. Whole-business LIVE not required."
 }

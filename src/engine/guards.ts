@@ -133,6 +133,9 @@ export function runGuard(
       return { ok: true };
     }
     case "founder_refund_credit": {
+      if (flag(evidence, "automatic_refund") || flag(evidence, "automatic_credit")) {
+        return { ok: false, reason: "refund/credit must remain per-case and human-only" };
+      }
       const decision = evidence.founder_refund_credit_decision;
       const allowed = new Set([
         "refund_approved",

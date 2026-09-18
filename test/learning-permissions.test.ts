@@ -158,6 +158,114 @@ describe("continuous learning and permissions", () => {
     }
   });
 
+  it("allows CONTROLLED_BETA paying clients only with named founder Stripe-live unlock", () => {
+    const registry = loadPermissions();
+    const payments = registry.unlocks.find((item) => item.capability === "payments")!;
+    assert.deepEqual(payments.allowedIn, ["CONTROLLED_BETA", "LIVE"]);
+    assert.equal(payments.separateFromWholeBusinessLive, true);
+    assert.equal(payments.paymentClearOwner, "Sam");
+    const unlockEvidence = {
+      founder_stripe_live_unlock: true,
+      founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+      payment_clear_owner: "Sam",
+    };
+    assert.equal(permissionAllowed(registry, "payments", "TEST", unlockEvidence).ok, false);
+    assert.equal(permissionAllowed(registry, "payments", "CONTROLLED_BETA").ok, false);
+    const beta = permissionAllowed(registry, "payments", "CONTROLLED_BETA", unlockEvidence);
+    assert.equal(beta.ok, true, beta.reason);
+    const live = permissionAllowed(registry, "payments", "LIVE", unlockEvidence);
+    assert.equal(live.ok, true, live.reason);
+    assert.notEqual(registry.currentMode, "LIVE");
+  });
+
+  it("allows per-case founder refund/credit in CONTROLLED_BETA and LIVE, never automatic", () => {
+    const registry = loadPermissions();
+    const refunds = registry.unlocks.find((item) => item.capability === "refunds_credits")!;
+    assert.deepEqual(refunds.allowedIn, ["CONTROLLED_BETA", "LIVE"]);
+    assert.equal(refunds.neverAutomatic, true);
+    assert.equal(refunds.perCase, true);
+    const decision = {
+      founder_refund_credit_decision: "refund_approved",
+      founder_decision_ref: "FD-REF-BETA",
+    };
+    assert.equal(permissionAllowed(registry, "refunds_credits", "TEST", decision).ok, false);
+    assert.equal(permissionAllowed(registry, "refunds_credits", "CONTROLLED_BETA").ok, false);
+    assert.equal(
+      permissionAllowed(registry, "refunds_credits", "CONTROLLED_BETA", {
+        ...decision,
+        automatic_refund: true,
+      }).ok,
+      false,
+    );
+    assert.equal(permissionAllowed(registry, "refunds_credits", "CONTROLLED_BETA", decision).ok, true);
+    assert.equal(permissionAllowed(registry, "refunds_credits", "LIVE", decision).ok, true);
+  });
+
+  it("rejects live Closed Won in TEST even with founder payment unlock evidence", () => {
+    const target = engine();
+    const start = [
+      event("start_marketing", "Taylor", { campaign_ref: "CAMP-PAY-1" }),
+      event("social_enquiry", "Taylor", {
+        enquiry_channel: "instagram",
+        enquiry_received_at: "2026-09-18T10:00:00Z",
+        non_pii_enquiry_ref: "ENQ-PAY-1",
+      }),
+      event("classify_enquiry", "Taylor", {
+        non_pii_enquiry_ref: "ENQ-PAY-1",
+        classification_label: "coaching_enquiry",
+      }),
+      event("qualify_lead", "Sam", {
+        non_pii_enquiry_ref: "ENQ-PAY-1",
+        qualification_outcome: "qualified",
+      }),
+      event("present_offer", "Sam", { offer_id: "OFF-PAY-1", offer_version: "v1" }),
+      event("payment_intent_recorded", "Sam", {
+        offer_id: "OFF-PAY-1",
+        stripe_payment_ref: "pi_test_pay",
+        stripe_livemode: true,
+      }),
+      event("payment_cleared", "Sam", {
+        stripe_payment_ref: "pi_test_pay",
+        stripe_livemode: true,
+        stripe_status: "succeeded",
+        payment_clear_owner: "Sam",
+      }),
+    ];
+    for (const item of start) {
+      assert.equal(target.apply(item).status, "applied", item.type);
+    }
+    const blocked = target.apply(
+      event("mark_closed_won", "Sam", {
+        stripe_payment_ref: "pi_test_pay",
+        stripe_livemode: true,
+        stripe_status: "succeeded",
+        closed_won_commercial_ref: "CW-PAY-1",
+        payment_mode: "live",
+        founder_stripe_live_unlock: true,
+        founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+        payment_clear_owner: "Sam",
+      }),
+    );
+    assert.equal(blocked.status, "rejected");
+    assert.match(blocked.reason ?? "", /payments blocked in TEST/);
+    const founding = target.apply(
+      event("mark_closed_won", "Sam", {
+        stripe_payment_ref: "pi_test_pay",
+        stripe_livemode: true,
+        stripe_status: "succeeded",
+        closed_won_commercial_ref: "CW-PAY-1",
+        payment_mode: "live",
+        operating_mode: "CONTROLLED_BETA",
+        founder_stripe_live_unlock: true,
+        founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+        payment_clear_owner: "Sam",
+      }),
+    );
+    assert.equal(founding.status, "applied", founding.reason);
+    assert.equal(founding.externalWrite, false);
+    assert.equal(founding.dryRun, true);
+  });
+
   it("wakes the owner/worker and keeps founder gates human", () => {
     const model = loadLifecycle();
     const checkin = model.transitions.find((item) => item.id === "t_open_weekly_checkin")!;

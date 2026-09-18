@@ -48,10 +48,10 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 ## Current limitations
 
 - Live Drive/Metricool/CRM/Stripe/Superset/Slack integrations are not wired
-- Stripe evidence is fixture/dry-run only; no live activation
+- Stripe evidence is fixture/dry-run only; this task performs no live activation
 - Ready, founder go-live, refund/credit, and publication stay human-gated
 - Slack command bus is specified, not connected
-- Operating mode is `TEST` until a founder unlock in `model/permissions.json` (beta target 25 Sep 2026)
+- Operating mode in this repo is `TEST`. `CONTROLLED_BETA` may accept paying founding clients after a named founder Stripe-live unlock without promoting the whole business to LIVE (`model/permissions.json`)
 - Learning emits versioned SOP proposals only; agents cannot self-modify Drive policy
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
 
