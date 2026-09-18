@@ -19,7 +19,7 @@ Verified on branch `cursor/tr-training-control-plane-fcd0` (draft PR #1).
 
 ## Phase B QA delta
 
-- Cursor Cloud Agents API v1 (public beta) adapter: `POST /v1/agents`, `GET /v1/agents/{agentId}/runs/{runId}`, deterministic `bc-` UUID, exact `TRCoach/TRCoaching` allowlist, starting ref, optional `GET /v1/models`, `autoCreatePR=true`, `409 agent_id_conflict` reconciliation. Default NOT_CONNECTED without a server-only key.
+- Cursor Cloud Agents API v1 (public beta) adapter: `POST /v1/agents`, `GET /v1/agents/{agentId}/runs/{runId}`, server-minted agent ID, exact `TRCoach/TRCoaching` allowlist, starting ref, optional `GET /v1/models`, and `autoCreatePR=false` for the controlled TEST rehearsal. An uncertain create is never auto-retried. Default NOT_CONNECTED without a server-only key.
 - OpenAI Responses worker: `POST /v1/responses` `background=true`, `GET /v1/responses/{id}`. Requires `FOUNDER_CHATGPT_DISPATCH=1` + `OPENAI_API_KEY` + `OPENAI_MODEL`. Spend disabled by default. Retention/data-control review documented.
 - Slack collect of correlated `Grok_Alex: OPS_STATUS`; `POST /api/jobs/refresh`.
 - Live metadata/auth probes discard/cancel bodies; persist timestamp + evidence labels only.

@@ -28,7 +28,7 @@ The process fail-closes if production persistence or credentials are missing.
 ## Slack / Cursor / ChatGPT
 
 - Slack live dispatch: `SLACK_DISPATCH_ENABLED=1`, bot token, channel `#ai-ops` only. Tests use a fake transport. Collect allowlisted `Grok_Alex: OPS_STATUS` from `conversations.history` via **Collect worker results** (`POST /api/jobs/refresh`). Wrong correlation, unknown status, wrong executor, and oversized detail are rejected.
-- Cursor Cloud Agents API v1 is real (public beta). Server-only `CURSOR_CLOUD_AGENT_TOKEN`, exact `CURSOR_ALLOW_REPO=TRCoach/TRCoaching`, `CURSOR_STARTING_REF`, optional `CURSOR_MODEL` from `GET /v1/models`, `autoCreatePR=true`, deterministic `bc-` UUID. Default remains NOT_CONNECTED without the server-only key. Never fake COMPLETED.
+- Cursor Cloud Agents API v1 is real (public beta). Use a server-only `CURSOR_CLOUD_AGENT_TOKEN`, exact `CURSOR_ALLOW_REPO=TRCoach/TRCoaching`, `CURSOR_STARTING_REF`, optional `CURSOR_MODEL` from `GET /v1/models`, and the server-minted agent ID returned by `POST /v1/agents`. The controlled TEST rehearsal uses `autoCreatePR=false`. Never auto-retry an uncertain create and never fake COMPLETED.
 - ChatGPT/OpenAI: `FOUNDER_CHATGPT_DISPATCH=1` plus `OPENAI_API_KEY` and `OPENAI_MODEL`. Uses `POST /v1/responses` with `background=true` and `GET /v1/responses/{id}`. Spend stays disabled by default. Review OpenAI response retention/data-control before enabling. Bounded non-PII operational metadata only.
 
 ## Persistence limitation
