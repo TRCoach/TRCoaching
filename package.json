@@ -17,7 +17,8 @@
     "console:start": "node dist/console/http.js",
     "console:build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
     "console:check": "tsc -p tsconfig.web.json && tsx src/console/check.ts",
-    "console:hash-password": "tsx src/console/hash-password.ts"
+    "console:hash-password": "tsx src/console/hash-password.ts",
+    "worker:check": "tsc -p tsconfig.json --pretty false"
   },
   "bin": {
     "tr-control": "./dist/cli.js"

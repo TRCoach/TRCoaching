@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 import { FounderAuth } from "../src/console/auth.ts";
-import { JsonFileStore, MemoryStore } from "../src/console/store.ts";
+import { MemoryStore } from "../src/console/store.ts";
+import { JsonFileStore } from "../src/console/file-store.ts";
 import { collectEvidence } from "../src/console/evidence.ts";
 import { DispatchEngine, MemorySlackTransport } from "../src/console/dispatch.ts";
 import { startConsoleServer } from "../src/console/http.ts";
@@ -113,7 +114,8 @@ describe("founder console phase B", () => {
       audits: [],
     } as never);
     const migrated = new JsonFileStore(path).load();
-    assert.equal(migrated.version, 2);
+    assert.equal(migrated.version, 3);
+    assert.equal(migrated.revision, 0);
     assert.deepEqual(migrated.jobs[0]?.tests, []);
     assert.deepEqual(migrated.jobs[0]?.blockers, []);
     assert.deepEqual(migrated.probes, []);

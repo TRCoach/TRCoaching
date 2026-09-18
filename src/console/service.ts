@@ -13,6 +13,10 @@ import { collectEvidence, readEvidenceEnv, type EvidenceCard } from "./evidence.
 import { DispatchEngine, MemorySlackTransport, type DispatchSummary } from "./dispatch.js";
 import { probeConnectors } from "./probes.js";
 import type { ProbeResult } from "./http-probe.js";
+import { collectLiveEvidence } from "./live-adapters.js";
+import { ingestRehearsalStatus, runCursorRehearsal, runSlackRehearsal } from "./rehearsal.js";
+import { CursorDispatch } from "./cursor-v1.js";
+import { throttleRefresh } from "./d1-store.js";
 import {
   LANE_IDS,
   type ActionResult,
@@ -116,13 +120,17 @@ export class ConsoleService {
       evidenceRefs: [item.ref],
       nextAction: item.outcome === "founder_required" ? "founder_decision" : "inspect",
     }));
-    this.decisions = seedDecisions(nowIso()).map((item) => ({
-      ...item,
-      owner: "Founder",
-      impact: "TEST simulation only — no provider mutation.",
-      expiry: "until founder acts",
-      nextTrigger: "approve_or_reject_or_request_evidence",
-    }));
+    const storedDecisions = this.store.load().decisions;
+    this.decisions =
+      storedDecisions.length > 0
+        ? storedDecisions
+        : seedDecisions(nowIso()).map((item) => ({
+            ...item,
+            owner: "Founder",
+            impact: "TEST simulation only — no provider mutation.",
+            expiry: "until founder acts",
+            nextTrigger: "approve_or_reject_or_request_evidence",
+          }));
   }
 
   mode(): OperatingMode {
@@ -244,6 +252,8 @@ export class ConsoleService {
       unauthorizedBusinessWrites: 0,
       authorisedGovernedDispatchCount: this.dispatch.authorisedGovernedDispatchCount(),
       writeScope: this.dispatch.writeScope(),
+      correlations: this.store.load().correlations,
+      openaiDisabled: true,
     };
   }
 
@@ -260,6 +270,9 @@ export class ConsoleService {
       item.status = "approved";
       item.notes = `${item.notes} TEST recorded founder approval only; no provider call.`;
       this.audit(newId("corr"), `Decision ${item.kind}`, "pending", "Founder", "control_plane", `Approved on paper only. ${item.kind} did not call a provider.`, "founder_decision", "show_founder_decisions");
+      this.store.exclusive((data) => {
+        data.decisions = this.decisions;
+      });
       return { ok: true, item, providerCalled: false, externalWrites: 0 };
     }
     if (act === "approve") {
@@ -270,6 +283,9 @@ export class ConsoleService {
       item.status = "more_evidence_requested";
     }
     this.audit(newId("corr"), `Decision ${item.kind}`, "pending", "Founder", "control_plane", `Founder ${act} for ${item.subjectRef}. No provider mutation.`, "founder_decision", "show_founder_decisions");
+    this.store.exclusive((data) => {
+      data.decisions = this.decisions;
+    });
     return { ok: true, item, providerCalled: false, externalWrites: 0 };
   }
 
@@ -940,7 +956,48 @@ export class ConsoleService {
     return { kind, id, state: "UNKNOWN", nextAction: "none" };
   }
 
+  async rehearsalSlack() {
+    return runSlackRehearsal(this.store, this.permissions, this.dispatch.slack);
+  }
+
+  async rehearsalCursor(cursor?: CursorDispatch) {
+    return runCursorRehearsal(this.store, cursor);
+  }
+
+  ingestRehearsal(text: string) {
+    return ingestRehearsalStatus(this.store, text);
+  }
+
+  async refreshEvidence(fetchImpl?: typeof fetch) {
+    const env = readEvidenceEnv();
+    env.openaiForcedOff = true;
+    const live = await collectLiveEvidence(env, fetchImpl ?? fetch);
+    for (const card of live) {
+      const idx = this.evidenceCards.findIndex((item) => item.id === card.id);
+      if (idx >= 0) this.evidenceCards[idx] = card;
+      else this.evidenceCards.push(card);
+    }
+    this.store.exclusive((data) => {
+      data.evidenceCards = this.evidenceCards;
+    });
+    return { evidence: this.evidenceCards, unauthorizedBusinessWrites: 0 as const, openaiDisabled: true };
+  }
+
   async refreshJobs() {
+    const last = this.store.load().lastRefreshAt;
+    if (!throttleRefresh(last)) {
+      return {
+        collected: 0,
+        rejected: [{ detail: "", reason: "refresh throttled" }],
+        jobs: this.store.load().jobs,
+        unauthorizedBusinessWrites: 0 as const,
+        authorisedGovernedDispatchCount: this.dispatch.authorisedGovernedDispatchCount(),
+        throttled: true,
+      };
+    }
+    this.store.exclusive((data) => {
+      data.lastRefreshAt = new Date().toISOString();
+    });
     const refreshed = await this.dispatch.refresh();
     const probes = await probeConnectors(readEvidenceEnv());
     this.store.exclusive((data) => {

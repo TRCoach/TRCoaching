@@ -1,4 +1,4 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { createHash, pbkdf2Sync, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import type { ConsoleStore, StoredSession } from "./store.js";
 
 const SESSION_MS = 8 * 60 * 60 * 1000;
@@ -22,8 +22,6 @@ export interface AuthResult {
 }
 
 export class FounderAuth {
-  private attempts = new Map<string, number[]>();
-
   constructor(
     readonly store: ConsoleStore,
     readonly config: AuthConfig,
@@ -38,8 +36,25 @@ export class FounderAuth {
     return `scrypt$${salt}$${hash}`;
   }
 
+  static hashPasswordPbkdf2(password: string, salt = randomBytes(16).toString("hex"), iterations = 310000): string {
+    const hash = pbkdf2Sync(password, salt, iterations, 32, "sha256").toString("hex");
+    return `pbkdf2$${iterations}$${salt}$${hash}`;
+  }
+
   static verifyPassword(password: string, encoded: string): boolean {
-    const [scheme, salt, hash] = encoded.split("$");
+    const parts = encoded.split("$");
+    const scheme = parts[0];
+    if (scheme === "pbkdf2") {
+      const iterations = Number(parts[1]);
+      const salt = parts[2];
+      const hash = parts[3];
+      if (!iterations || !salt || !hash) return false;
+      const actual = pbkdf2Sync(password, salt, iterations, 32, "sha256");
+      const expected = Buffer.from(hash, "hex");
+      return actual.length === expected.length && timingSafeEqual(actual, expected);
+    }
+    const salt = parts[1];
+    const hash = parts[2];
     if (scheme !== "scrypt" || !salt || !hash) return false;
     const actual = scryptSync(password, salt, 32);
     const expected = Buffer.from(hash, "hex");
@@ -70,7 +85,9 @@ export class FounderAuth {
       this.recordAttempt(ip);
       return { ok: false, status: 401, reason: "invalid founder credentials" };
     }
-    this.attempts.delete(ip);
+    this.store.exclusive((data) => {
+      delete data.rateLimits[ip];
+    });
     const token = randomBytes(32).toString("hex");
     const now = Date.now();
     const session: StoredSession = {
@@ -144,15 +161,16 @@ export class FounderAuth {
 
   private recordAttempt(ip: string): void {
     const now = Date.now();
-    const recent = (this.attempts.get(ip) ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
-    recent.push(now);
-    this.attempts.set(ip, recent);
+    this.store.exclusive((data) => {
+      const recent = (data.rateLimits[ip] ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
+      recent.push(now);
+      data.rateLimits[ip] = recent;
+    });
   }
 
   private rateOk(ip: string): boolean {
     const now = Date.now();
-    const recent = (this.attempts.get(ip) ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
-    this.attempts.set(ip, recent);
+    const recent = (this.store.load().rateLimits[ip] ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
     const max = ip === "127.0.0.1" || ip === "::1" || ip === ":ffff:127.0.0.1" ? LOGIN_MAX + 10 : LOGIN_MAX;
     return recent.length < max;
   }

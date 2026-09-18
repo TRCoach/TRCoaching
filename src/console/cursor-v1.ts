@@ -11,6 +11,7 @@ export interface CursorDispatchOptions {
   allowRepo?: string;
   startingRef?: string;
   requestedModel?: string;
+  autoCreatePR?: boolean;
   fetchImpl?: FetchLike;
   apiBase?: string;
 }
@@ -80,6 +81,7 @@ export class CursorDispatch implements WorkerDispatch {
   private allowRepo: string;
   private startingRef: string;
   private requestedModel?: string;
+  private autoCreatePR: boolean;
   private fetchImpl: FetchLike;
   private apiBase: string;
 
@@ -90,6 +92,7 @@ export class CursorDispatch implements WorkerDispatch {
     this.allowRepo = options.allowRepo ?? CURSOR_ALLOW_REPO_EXACT;
     this.startingRef = options.startingRef ?? "main";
     this.requestedModel = options.requestedModel;
+    this.autoCreatePR = options.autoCreatePR !== false;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.apiBase = options.apiBase ?? CURSOR_API_BASE;
   }
@@ -124,11 +127,12 @@ export class CursorDispatch implements WorkerDispatch {
           `event_id=${job.id}`,
           `correlation_id=${job.correlationId}`,
           `evidence_refs=${job.evidenceRefs.join(",")}`,
+          "No provider writes. No external business-system mutation. No money movement. No publication.",
           "Produce a QA report. No PII. No Zone C. No secrets. Stop after the report.",
         ].join("\n"),
       },
       repos: [{ url: CURSOR_REPO_URL, startingRef: this.startingRef }],
-      autoCreatePR: true,
+      autoCreatePR: this.autoCreatePR,
     };
     if (model) payload.model = { id: model };
     const created = await this.request("POST", "/v1/agents", payload);

@@ -63,6 +63,6 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 - Operating mode in this repo is `TEST` from `model/permissions.json` only. Event evidence cannot select or promote mode. Isolated tests may inject a trusted registry. `CONTROLLED_BETA` may accept paying founding clients after a named founder Stripe-live unlock without promoting the whole business to LIVE
 - Learning emits versioned SOP proposals only; agents cannot self-modify Drive policy
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
-- Founder Console Phase B is an authenticated localhost PWA over the Control Plane service. Cursor Cloud Agents API v1 and OpenAI Responses adapters are wired but stay NOT_CONNECTED without server-only keys. Store is single-process atomic JSON. No public/anonymous deployment. No provider credentials are connected in this repo.
+- Founder Console Phase C targets Cloudflare Workers Free + D1 Free (`workers.dev`). The Worker/D1 adapters are implemented and locally tested; **this repo change does not deploy or connect live providers**. OpenAI stays disabled. No public/anonymous deployment. No provider credentials are connected in this repo.
 
 See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), wake routing, the Founder Console, and the phased beta plan. Bounded evidence is in `reports/COMPLETION.md`, `reports/FOUNDER-CONSOLE-COMPLETION.md`, and `reports/benchmark-social.json`.

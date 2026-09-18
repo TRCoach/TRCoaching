@@ -1,9 +1,10 @@
 import { FounderAuth } from "./auth.js";
 
-const password = process.argv[2];
+const pbkdf2 = process.argv.includes("--pbkdf2");
+const password = process.argv.filter((item) => item !== "--pbkdf2")[2];
 if (!password) {
-  process.stderr.write("usage: npm run console:hash-password -- <password>\n");
+  process.stderr.write("usage: npm run console:hash-password -- [--pbkdf2] <password>\n");
   process.exitCode = 1;
 } else {
-  process.stdout.write(`${FounderAuth.hashPassword(password)}\n`);
+  process.stdout.write(`${pbkdf2 ? FounderAuth.hashPasswordPbkdf2(password) : FounderAuth.hashPassword(password)}\n`);
 }

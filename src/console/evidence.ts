@@ -15,6 +15,11 @@ export interface EvidenceCard {
   setupRequirement: string;
   credentialsExposed: false;
   demoFixture: boolean;
+  lastAttemptedAt?: string;
+  lastVerifiedAt?: string | null;
+  currentState?: Freshness;
+  reason?: string;
+  nextSetupRequirement?: string;
 }
 
 export interface EvidenceEnv {
@@ -37,6 +42,7 @@ export interface EvidenceEnv {
   openaiKey?: string;
   openaiModel?: string;
   chatgptDispatchEnabled?: boolean;
+  openaiForcedOff?: boolean;
   githubToken?: string;
 }
 
@@ -60,8 +66,20 @@ export function readEvidenceEnv(env: NodeJS.ProcessEnv = process.env): EvidenceE
     cursorModel: env.CURSOR_MODEL,
     openaiKey: env.OPENAI_API_KEY,
     openaiModel: env.OPENAI_MODEL,
-    chatgptDispatchEnabled: env.FOUNDER_CHATGPT_DISPATCH === "1",
+    chatgptDispatchEnabled: env.FOUNDER_CHATGPT_DISPATCH === "1" && env.FOUNDER_OPENAI_DISABLED !== "1",
+    openaiForcedOff: env.FOUNDER_OPENAI_DISABLED === "1" || env.FOUNDER_CHATGPT_DISPATCH !== "1",
     githubToken: env.GITHUB_READONLY_TOKEN,
+  };
+}
+
+export function presentEvidence(card: EvidenceCard): EvidenceCard {
+  return {
+    ...card,
+    lastAttemptedAt: card.lastAttemptedAt ?? card.lastAttempted,
+    lastVerifiedAt: card.lastVerifiedAt ?? card.lastVerified,
+    currentState: card.currentState ?? card.freshness,
+    reason: card.reason ?? card.detail,
+    nextSetupRequirement: card.nextSetupRequirement ?? card.setupRequirement,
   };
 }
 
@@ -254,7 +272,7 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
   );
 
   cards.push(
-    env.chatgptDispatchEnabled && env.openaiKey
+    env.chatgptDispatchEnabled && env.openaiKey && !env.openaiForcedOff
       ? {
           id: "chatgpt",
           source: "ChatGPT",
@@ -271,7 +289,9 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
       : disconnected(
           "chatgpt",
           "ChatGPT",
-          "Set FOUNDER_CHATGPT_DISPATCH=1 plus OPENAI_API_KEY and OPENAI_MODEL only after founder spend approval and a data-control review. Until then the adapter is NOT_CONNECTED.",
+          env.openaiForcedOff
+            ? "Phase C keeps OpenAI Responses disabled and NOT_CONNECTED. FOUNDER_CHATGPT_DISPATCH/OPENAI_API_KEY are ignored. No OpenAI spend."
+            : "Set FOUNDER_CHATGPT_DISPATCH=1 plus OPENAI_API_KEY and OPENAI_MODEL only after founder spend approval and a data-control review. Until then the adapter is NOT_CONNECTED.",
         ),
   );
 
@@ -294,5 +314,5 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
         : disconnected("github", "GitHub", "Set GITHUB_READONLY_TOKEN for TRCoach/TRCoaching metadata reads."),
   );
 
-  return cards;
+  return cards.map(presentEvidence);
 }

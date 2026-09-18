@@ -27,7 +27,7 @@
           <button type="submit">Enter console</button>
           <p id="login-error" class="error" role="alert"></p>
         </form>
-        <p class="install-note">Install: in Chromium use Install app from the address bar. iOS: Share → Add to Home Screen. Local preview needs <code>FOUNDER_CONSOLE_DEV_AUTH=1</code>.</p>
+        <p class="install-note">Install: Windows Edge/Chrome — Install app / Add to taskbar from the address-bar icon. iOS Safari — Share → Add to Home Screen. Android Chrome — Install app. Local preview needs <code>FOUNDER_CONSOLE_DEV_AUTH=1</code>. Hosted preview is the private workers.dev URL after Cloudflare deploy.</p>
       </div>
     </section>
 
@@ -80,7 +80,12 @@
         <section aria-labelledby="jobs-heading">
           <div class="section-head">
             <h2 id="jobs-heading">Dispatch jobs</h2>
-            <button type="button" id="refresh-jobs" class="ghost">Collect worker results</button>
+            <div class="actions">
+              <button type="button" id="refresh-jobs" class="ghost">Collect worker results</button>
+              <button type="button" id="rehearsal-slack" class="ghost">Slack rehearsal</button>
+              <button type="button" id="rehearsal-cursor" class="ghost">Cursor rehearsal</button>
+              <button type="button" id="refresh-evidence" class="ghost">Refresh evidence</button>
+            </div>
           </div>
           <div id="jobs" class="list"></div>
         </section>

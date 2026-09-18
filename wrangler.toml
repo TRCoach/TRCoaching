@@ -1,0 +1,41 @@
+name = "tr-founder-console"
+main = "src/worker/index.ts"
+compatibility_date = "2026-09-18"
+compatibility_flags = ["nodejs_compat"]
+
+# Default HTTPS endpoint is workers.dev after `wrangler deploy`.
+# Do not attach a custom public domain. Do not activate Workers Paid ($5/mo) without founder approval.
+
+[assets]
+directory = "./console/public"
+binding = "ASSETS"
+run_worker_first = ["/api/*"]
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tr-founder-console"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+FOUNDER_CONSOLE_HOSTING = "cloudflare-workers-free"
+FOUNDER_OPENAI_DISABLED = "1"
+FOUNDER_AUTH_USER = "founder"
+CURSOR_ALLOW_REPO = "TRCoach/TRCoaching"
+CURSOR_STARTING_REF = "cursor/tr-training-control-plane-fcd0"
+SLACK_DISPATCH_ENABLED = "0"
+SLACK_AI_OPS_CHANNEL = "#ai-ops"
+
+# Secrets (wrangler secret put) — never commit values:
+# FOUNDER_SESSION_SECRET
+# FOUNDER_AUTH_PASSWORD_HASH
+# SLACK_BOT_TOKEN
+# CURSOR_CLOUD_AGENT_TOKEN
+# TR_DRIVE_READONLY_TOKEN
+# TR_CRM_READONLY_TOKEN
+# TR_METRICOOL_READONLY_TOKEN
+# TR_STRIPE_READONLY_TOKEN
+# TR_SUPERSET_READONLY_TOKEN
+# GITHUB_READONLY_TOKEN

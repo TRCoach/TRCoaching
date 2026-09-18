@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { FounderAuth, type AuthConfig } from "./auth.js";
-import { openStore, type ConsoleStore } from "./store.js";
+import { type ConsoleStore } from "./store.js";
+import { openStore } from "./file-store.js";
 
 export interface ConsoleRuntimeConfig {
   production: boolean;
@@ -27,8 +28,8 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Console
     if (!secret || secret.length < 32) {
       throw new Error("production fail-closed: FOUNDER_SESSION_SECRET (>=32) is required");
     }
-    if (!passwordHash || !passwordHash.startsWith("scrypt$")) {
-      throw new Error("production fail-closed: FOUNDER_AUTH_PASSWORD_HASH is required (no default credential)");
+    if (!passwordHash || !/^(scrypt|pbkdf2)\$/.test(passwordHash)) {
+      throw new Error("production fail-closed: FOUNDER_AUTH_PASSWORD_HASH is required (scrypt$ or pbkdf2$, no default credential)");
     }
     if (host !== "127.0.0.1" && host !== "localhost" && env.FOUNDER_CONSOLE_ALLOW_REMOTE !== "1") {
       throw new Error("production fail-closed: set FOUNDER_CONSOLE_ALLOW_REMOTE=1 only for private HTTPS");

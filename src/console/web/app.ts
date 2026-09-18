@@ -22,7 +22,9 @@ interface Snapshot {
   actions: Array<{ id: string; title: string; owner: string; system: string; workflowId: string; success: string; founderGate: boolean; _pref?: Pref }>;
   inbox: Array<{ id: string; title: string; kind: string; status: string; subjectRef: string; notes: string; impact?: string }>;
   activity: Array<{ id: string; title: string; status: string; summary: string; owner: string }>;
-  jobs?: Array<{ id: string; title: string; status: string; owner: string; resultSummary: string; executor: string }>;
+  jobs?: Array<{ id: string; title: string; status: string; owner: string; resultSummary: string; executor: string; correlationId?: string; parentId?: string }>;
+  correlations?: Array<{ id: string; parentAction: string; eventIds: string[] }>;
+  openaiDisabled?: boolean;
   status: Array<{ label: string; role: string; reachability: string; detail: string }>;
   evidence?: Array<{ id: string; source: string; freshness: string; detail: string; setupRequirement: string }>;
   usage: { jobs: number; model: string; runtimeMs: number; retries: number; estimatedCostUsd: null; costStatus: string; note: string };
@@ -118,7 +120,8 @@ function render(snap: Snapshot): void {
       (job) => `
       <article class="row lane ${job.status}" data-detail="job/${job.id}">
         <h3>${escape(job.title)}</h3>
-        <p>${badge(job.status)} · ${escape(job.executor)} · ${escape(job.owner)}</p>
+        <p>${badge(job.status === "pending" || job.status === "requested" ? "pending" : job.status)} · ${escape(job.executor)} · ${escape(job.owner)}</p>
+        <p>correlation ${escape(job.correlationId ?? "")}${job.parentId ? ` · parent ${escape(job.parentId)}` : ""}</p>
         <p>${escape(job.resultSummary)}</p>
       </article>`,
     )
@@ -129,7 +132,7 @@ function render(snap: Snapshot): void {
     )
     .join("");
   const connectors = (snap.evidence ?? []).map(
-    (item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`,
+    (item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness === "VERIFIED" && !item.detail ? "UNKNOWN" : item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`,
   );
   (document.querySelector("#status") as HTMLElement).innerHTML = connectors.join("");
   const usage = snap.usage;
@@ -201,6 +204,9 @@ async function boot(): Promise<void> {
   csrf = session.csrf ?? "";
   show("app");
   await refresh();
+  window.setInterval(() => {
+    if (csrf) void refresh();
+  }, 45_000);
 }
 
 document.querySelector("#login-form")?.addEventListener("submit", (event) => {
@@ -243,6 +249,23 @@ document.querySelector("#command-form")?.addEventListener("submit", (event) => {
     });
 });
 
+document.querySelector("#rehearsal-slack")?.addEventListener("click", () => {
+  void api<{ job?: { resultSummary?: string } }>("/api/rehearsal/slack", { method: "POST", body: "{}" }).then(async (result) => {
+    (document.querySelector("#result") as HTMLElement).textContent = result.job?.resultSummary ?? "Slack rehearsal finished.";
+    await refresh();
+  });
+});
+document.querySelector("#rehearsal-cursor")?.addEventListener("click", () => {
+  void api<{ job?: { resultSummary?: string } }>("/api/rehearsal/cursor", { method: "POST", body: "{}" }).then(async (result) => {
+    (document.querySelector("#result") as HTMLElement).textContent = result.job?.resultSummary ?? "Cursor rehearsal finished.";
+    await refresh();
+  });
+});
+document.querySelector("#refresh-evidence")?.addEventListener("click", () => {
+  void api("/api/evidence/refresh", { method: "POST", body: "{}" }).then(async () => {
+    await refresh();
+  });
+});
 document.querySelector("#refresh-jobs")?.addEventListener("click", () => {
   void api<{ collected: number; rejected: Array<{ reason: string }>; unauthorizedBusinessWrites: number; authorisedGovernedDispatchCount: number }>(
     "/api/jobs/refresh",

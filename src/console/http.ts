@@ -119,13 +119,19 @@ export function createDefaultRuntime(service?: ConsoleService) {
         requestedModel: env.cursorModel,
       }),
       new ChatGptDispatch({
-        enabled: env.chatgptDispatchEnabled,
+        enabled: false,
         apiKey: env.openaiKey,
         model: env.openaiModel,
       }),
-      collectEvidence(env),
+      collectEvidence({ ...env, openaiForcedOff: true, chatgptDispatchEnabled: false }),
     );
-  const resolved = service ?? new ConsoleService(permissions, { store, dispatch, evidence: collectEvidence(env) });
+  const resolved =
+    service ??
+    new ConsoleService(permissions, {
+      store,
+      dispatch,
+      evidence: collectEvidence({ ...env, openaiForcedOff: true, chatgptDispatchEnabled: false }),
+    });
   return { auth, service: resolved, secureCookies: false };
 }
 
@@ -191,6 +197,7 @@ async function api(
       writeScope,
       unauthorizedBusinessWrites: 0,
       authorisedGovernedDispatchCount: service.dispatch.authorisedGovernedDispatchCount(),
+      openaiDisabled: true,
       bind: "private",
     });
     return;
@@ -305,6 +312,10 @@ async function api(
     send(res, 200, { items: service.status(), evidence: service.evidenceCards, credentialsExposed: false });
     return;
   }
+  if (path === "/api/evidence") {
+    send(res, 200, { items: service.evidenceCards, openaiDisabled: true, credentialsExposed: false });
+    return;
+  }
   if (path === "/api/usage") {
     send(res, 200, service.usage());
     return;
@@ -374,6 +385,22 @@ async function mutate(
   }
   if (path === "/api/jobs/refresh") {
     send(res, 200, await service.refreshJobs());
+    return;
+  }
+  if (path === "/api/evidence/refresh") {
+    send(res, 200, await service.refreshEvidence());
+    return;
+  }
+  if (path === "/api/rehearsal/slack") {
+    send(res, 200, await service.rehearsalSlack());
+    return;
+  }
+  if (path === "/api/rehearsal/cursor") {
+    send(res, 200, await service.rehearsalCursor());
+    return;
+  }
+  if (path === "/api/rehearsal/slack/status") {
+    send(res, 200, service.ingestRehearsal(String(safe.text ?? "")));
     return;
   }
   const actionMatch = path.match(/^\/api\/actions\/([a-z0-9_]+)$/);
@@ -449,11 +476,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
       requestedModel: env.cursorModel,
     }),
     new ChatGptDispatch({
-      enabled: env.chatgptDispatchEnabled,
+      enabled: false,
       apiKey: env.openaiKey,
       model: env.openaiModel,
     }),
-    collectEvidence(env),
+    collectEvidence({ ...env, openaiForcedOff: true, chatgptDispatchEnabled: false }),
   );
   const service = new ConsoleService(loadPermissions(), {
     store: cfg.store,

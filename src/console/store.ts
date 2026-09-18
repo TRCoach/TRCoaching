@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
 import { assertNoSensitivePayload } from "../sensitive.js";
+import type { DecisionItem } from "./types.js";
+import type { EvidenceCard } from "./evidence.js";
 
-export const STORE_VERSION = 2;
+export const STORE_VERSION = 3;
 
 export interface ActionPreference {
   id: string;
@@ -51,6 +51,22 @@ export interface StoredProbe {
   bodyDiscarded: true;
 }
 
+export interface StoredCorrelation {
+  id: string;
+  createdAt: string;
+  parentAction: string;
+  eventIds: string[];
+}
+
+export interface StoredResultEnvelope {
+  id: string;
+  jobId: string;
+  correlationId: string;
+  status: DispatchStatus;
+  detail: string;
+  collectedAt: string;
+}
+
 export type DispatchStatus =
   | "QUEUED"
   | "RUNNING"
@@ -71,11 +87,20 @@ export interface StoredAudit {
 
 export interface StoreData {
   version: number;
+  revision: number;
+  writerId?: string;
+  writerExpiresAt?: string;
+  lastRefreshAt?: string;
   sessions: StoredSession[];
   preferences: ActionPreference[];
   jobs: StoredJob[];
   audits: StoredAudit[];
   probes: StoredProbe[];
+  decisions: DecisionItem[];
+  evidenceCards: EvidenceCard[];
+  correlations: StoredCorrelation[];
+  resultEnvelopes: StoredResultEnvelope[];
+  rateLimits: Record<string, number[]>;
 }
 
 export interface ConsoleStore {
@@ -84,17 +109,36 @@ export interface ConsoleStore {
   exclusive<T>(fn: (data: StoreData) => T): T;
 }
 
-function emptyData(): StoreData {
-  return { version: STORE_VERSION, sessions: [], preferences: [], jobs: [], audits: [], probes: [] };
+export function emptyData(): StoreData {
+  return {
+    version: STORE_VERSION,
+    revision: 0,
+    sessions: [],
+    preferences: [],
+    jobs: [],
+    audits: [],
+    probes: [],
+    decisions: [],
+    evidenceCards: [],
+    correlations: [],
+    resultEnvelopes: [],
+    rateLimits: {},
+  };
 }
 
-function migrate(raw: StoreData): StoreData {
-  const data = raw ?? emptyData();
+export function migrate(raw: StoreData): StoreData {
+  const data = { ...emptyData(), ...(raw ?? emptyData()) };
   data.sessions ??= [];
   data.preferences ??= [];
   data.jobs ??= [];
   data.audits ??= [];
   data.probes ??= [];
+  data.decisions ??= [];
+  data.evidenceCards ??= [];
+  data.correlations ??= [];
+  data.resultEnvelopes ??= [];
+  data.rateLimits ??= {};
+  data.revision ??= 0;
   if (!data.version || data.version < 1) data.version = 1;
   if (data.version === 1) {
     data.version = 2;
@@ -102,6 +146,14 @@ function migrate(raw: StoreData): StoreData {
       job.tests ??= [];
       job.blockers ??= [];
     }
+  }
+  if (data.version === 2) {
+    data.version = 3;
+    data.revision ??= 0;
+    data.decisions ??= [];
+    data.evidenceCards ??= [];
+    data.correlations ??= [];
+    data.resultEnvelopes ??= [];
   }
   for (const job of data.jobs) {
     job.tests ??= [];
@@ -116,7 +168,6 @@ function migrate(raw: StoreData): StoreData {
 
 export class MemoryStore implements ConsoleStore {
   private data = emptyData();
-  private queue: Promise<unknown> = Promise.resolve();
 
   load(): StoreData {
     return structuredClone(this.data);
@@ -133,42 +184,4 @@ export class MemoryStore implements ConsoleStore {
     this.save(data);
     return result;
   }
-}
-
-export class JsonFileStore implements ConsoleStore {
-  constructor(readonly path: string) {
-    mkdirSync(dirname(path), { recursive: true });
-    if (!existsSync(path)) {
-      this.writeAtomic(emptyData());
-    }
-  }
-
-  load(): StoreData {
-    const parsed = JSON.parse(readFileSync(this.path, "utf8")) as StoreData;
-    return migrate(parsed);
-  }
-
-  save(data: StoreData): void {
-    assertNoSensitivePayload(data, "store");
-    this.writeAtomic(migrate(data));
-  }
-
-  exclusive<T>(fn: (data: StoreData) => T): T {
-    const data = this.load();
-    const result = fn(data);
-    this.save(data);
-    return result;
-  }
-
-  private writeAtomic(data: StoreData): void {
-    const tmp = `${this.path}.tmp`;
-    writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
-    renameSync(tmp, this.path);
-  }
-}
-
-export function openStore(kind: "memory" | "file", filePath?: string): ConsoleStore {
-  if (kind === "memory") return new MemoryStore();
-  if (!filePath) throw new Error("production persistence unavailable: FOUNDER_CONSOLE_DATA_DIR is required");
-  return new JsonFileStore(join(filePath, "console-store.json"));
 }

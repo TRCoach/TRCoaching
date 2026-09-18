@@ -73,14 +73,15 @@ function render(snap) {
         .map((job) => `
       <article class="row lane ${job.status}" data-detail="job/${job.id}">
         <h3>${escape(job.title)}</h3>
-        <p>${badge(job.status)} · ${escape(job.executor)} · ${escape(job.owner)}</p>
+        <p>${badge(job.status === "pending" || job.status === "requested" ? "pending" : job.status)} · ${escape(job.executor)} · ${escape(job.owner)}</p>
+        <p>correlation ${escape(job.correlationId ?? "")}${job.parentId ? ` · parent ${escape(job.parentId)}` : ""}</p>
         <p>${escape(job.resultSummary)}</p>
       </article>`)
         .join("");
     document.querySelector("#activity").innerHTML = snap.activity
         .map((item) => `<article class="row" data-detail="activity/${item.id}"><h3>${escape(item.title)}</h3><p>${badge(item.status)} · ${escape(item.owner)}</p><p>${escape(item.summary)}</p></article>`)
         .join("");
-    const connectors = (snap.evidence ?? []).map((item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`);
+    const connectors = (snap.evidence ?? []).map((item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness === "VERIFIED" && !item.detail ? "UNKNOWN" : item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`);
     document.querySelector("#status").innerHTML = connectors.join("");
     const usage = snap.usage;
     document.querySelector("#usage").innerHTML = `<article class="row"><p>Jobs ${usage.jobs} · ${escape(usage.model)} · ${usage.runtimeMs}ms · retries ${usage.retries}</p><p>Unauthorized business writes: ${snap.unauthorizedBusinessWrites ?? 0}. Authorised governed dispatch: ${snap.authorisedGovernedDispatchCount ?? 0}. Write scope: ${escape(snap.writeScope ?? "none")}.</p><p>Cost: unknown (${usage.costStatus}), never $0.00.</p><p>${escape(usage.note)}</p></article>`;
@@ -142,6 +143,10 @@ async function boot() {
     csrf = session.csrf ?? "";
     show("app");
     await refresh();
+    window.setInterval(() => {
+        if (csrf)
+            void refresh();
+    }, 45_000);
 }
 document.querySelector("#login-form")?.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -178,6 +183,23 @@ document.querySelector("#command-form")?.addEventListener("submit", (event) => {
         .catch((error) => {
         document.querySelector("#result").textContent =
             error instanceof Error ? error.message : String(error);
+    });
+});
+document.querySelector("#rehearsal-slack")?.addEventListener("click", () => {
+    void api("/api/rehearsal/slack", { method: "POST", body: "{}" }).then(async (result) => {
+        document.querySelector("#result").textContent = result.job?.resultSummary ?? "Slack rehearsal finished.";
+        await refresh();
+    });
+});
+document.querySelector("#rehearsal-cursor")?.addEventListener("click", () => {
+    void api("/api/rehearsal/cursor", { method: "POST", body: "{}" }).then(async (result) => {
+        document.querySelector("#result").textContent = result.job?.resultSummary ?? "Cursor rehearsal finished.";
+        await refresh();
+    });
+});
+document.querySelector("#refresh-evidence")?.addEventListener("click", () => {
+    void api("/api/evidence/refresh", { method: "POST", body: "{}" }).then(async () => {
+        await refresh();
     });
 });
 document.querySelector("#refresh-jobs")?.addEventListener("click", () => {
