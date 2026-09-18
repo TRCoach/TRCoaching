@@ -1,0 +1,95 @@
+{
+  "report_id": "qa_next_week_social_fixture",
+  "kind": "social_asset_production_qa",
+  "created_at": "2026-09-18T22:00:00.000Z",
+  "repo": "TRCoach/TRCoaching",
+  "bounded_task": "produce_and_technical_qa_next_week_social_assets",
+  "event_id": "evt_b3ab3c98",
+  "correlation_id": "corr_a80de922",
+  "week": {
+    "start": "2026-09-21",
+    "end": "2026-09-27",
+    "timezone": "Europe/London",
+    "id": "week:2026-09-21/2026-09-27"
+  },
+  "evidence_refs": [
+    "week:2026-09-21/2026-09-27",
+    "CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST",
+    "AI Coaching Company — Operating System (Master)",
+    "no_back_to_back_audio_hooks_or_core_treatment",
+    "tiktok_photo_jpeg_or_webp_not_png",
+    "accurate_ai_aigc_disclosure",
+    "no_text_overlap",
+    "instagram_0800_1300_1900",
+    "facebook_1000_1200_1800",
+    "tiktok_1000_1200_1800",
+    "exact_final_taylor_and_chatgpt_pass"
+  ],
+  "commands": [
+    {
+      "command": "npm run qa:next-week",
+      "result": "technical pass; dual PASS not granted",
+      "exit_code": 0
+    }
+  ],
+  "files": ["assets/week-2026-09-21/calendar.json"],
+  "calendar_path": "assets/week-2026-09-21/calendar.json",
+  "assets": [
+    {
+      "asset_id": "t1_static_feed_jpg",
+      "path": "assets/week-2026-09-21/t1-static-feed.jpg",
+      "checksum_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "config_id": "week-2026-09-21-t1-static",
+      "dimensions": { "width": 1080, "height": 1350 },
+      "mime": "image/jpeg",
+      "codec": null,
+      "safe_margins": { "pass": true },
+      "layout_overlap": { "pass": true, "overlaps": [] },
+      "provenance": {
+        "generator": "tr-control-plane/social-render",
+        "source": "code",
+        "external_media": false,
+        "paid_assets": false,
+        "music": false
+      },
+      "aigc": {
+        "used": false,
+        "rationale": "Deterministic SVG/code render. No generative image model."
+      },
+      "audio": "none",
+      "taylor_pass": false,
+      "chatgpt_pass": false,
+      "pass_checksum": null,
+      "pass_config_id": null,
+      "publish_eligible": false,
+      "publication_occurred": false
+    }
+  ],
+  "rule_checks": [
+    {
+      "id": "exact_final_taylor_and_chatgpt_pass",
+      "pass": false,
+      "gate": "publication",
+      "detail": "Technical QA only. Taylor PASS and ChatGPT PASS are not granted."
+    }
+  ],
+  "technical_qa_pass": true,
+  "state_model_coverage": {
+    "states": 44,
+    "transitions": 57,
+    "required_fields_present": true
+  },
+  "live_integration_gaps": ["Drive cited by title only"],
+  "external_writes": 0,
+  "publication_occurred": false,
+  "paid_spend": false,
+  "bounded_task_only": true,
+  "proof": {
+    "adapters_dry_run": true,
+    "publish_eligible": false,
+    "taylor_pass": false,
+    "chatgpt_pass": false,
+    "technical_qa_pass": true,
+    "exact_final_dual_pass": false
+  }
+}

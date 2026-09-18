@@ -23,6 +23,10 @@ describe("schemas and model", () => {
       const result = validateAgainst("socialQa", readJson(path));
       assert.equal(result.ok, true, `${path}: ${result.errors.join("; ")}`);
     }
+    for (const path of fixtureFiles("week-social-qa")) {
+      const result = validateAgainst("weekSocialQa", readJson(path));
+      assert.equal(result.ok, true, `${path}: ${result.errors.join("; ")}`);
+    }
   });
 
   it("requires every lifecycle transition field", () => {

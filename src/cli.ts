@@ -10,6 +10,7 @@ import { fixtureFiles, readJson, validateAgainst } from "./schema.js";
 import { FEED_LAYOUT, REEL_LAYOUT } from "./social/layout.js";
 import { assertQaPass, qaAsset } from "./social/qa.js";
 import { renderBenchmarkAssets } from "./social/render.js";
+import { produceAndQaNextWeek } from "./social/week.js";
 import type { BusinessEvent } from "./types.js";
 
 function print(value: unknown): void {
@@ -31,6 +32,7 @@ function validateAll(): { ok: boolean; results: Record<string, unknown> } {
     ...fixtureFiles("evidence").map((path) => ({ kind: "evidence" as const, path })),
     ...fixtureFiles("handoffs").map((path) => ({ kind: "handoff" as const, path })),
     ...fixtureFiles("social-qa").map((path) => ({ kind: "socialQa" as const, path })),
+    ...fixtureFiles("week-social-qa").map((path) => ({ kind: "weekSocialQa" as const, path })),
   ].map(({ kind, path }) => {
     const result = validateAgainst(kind, readJson(path));
     return { path, kind, ...result };
@@ -209,8 +211,24 @@ async function main(): Promise<void> {
     case "qa-social":
       await qaSocial();
       return;
+    case "qa-next-week": {
+      const result = await produceAndQaNextWeek();
+      print({
+        ok: true,
+        report_path: result.reportPath,
+        markdown_path: result.markdownPath,
+        calendar_path: result.calendarPath,
+        technical_qa_pass: result.report.technical_qa_pass,
+        publish_eligible: false,
+        publication_occurred: false,
+        external_writes: 0,
+        taylor_pass: false,
+        chatgpt_pass: false,
+      });
+      return;
+    }
     default:
-      process.stderr.write("usage: tr-control validate|apply-event <file>|next|benchmark-social|qa-social\n");
+      process.stderr.write("usage: tr-control validate|apply-event <file>|next|benchmark-social|qa-social|qa-next-week\n");
       process.exitCode = 1;
   }
 }

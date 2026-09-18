@@ -81,6 +81,7 @@ npm test
 npm run validate
 npm run benchmark:social
 npm run qa:social
+npm run qa:next-week
 npm run console:check
 ```
 

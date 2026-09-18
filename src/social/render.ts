@@ -41,6 +41,16 @@ function escapeXml(value: string): string {
     .replaceAll('"', "&quot;");
 }
 
+export interface RenderedPack {
+  configId: string;
+  files: string[];
+  feedJpg?: string;
+  feedWebp?: string;
+  reelMp4?: string;
+  storyboard?: string;
+  frames: string[];
+}
+
 export interface RenderedAssets {
   feedJpg: string;
   feedWebp: string;
@@ -50,101 +60,147 @@ export interface RenderedAssets {
   configId: string;
 }
 
-export async function renderBenchmarkAssets(outDir: string, config = DEFAULT_CONFIG): Promise<RenderedAssets> {
-  mkdirSync(outDir, { recursive: true });
-  const feedSvg = svgFor(FEED_LAYOUT, config, "SCENE 01");
-  const feedJpg = join(outDir, "busy-week-feed.jpg");
-  const feedWebp = join(outDir, "busy-week-feed.webp");
-  await sharp(Buffer.from(feedSvg)).jpeg({ quality: 88, chromaSubsampling: "4:2:0" }).toFile(feedJpg);
-  await sharp(Buffer.from(feedSvg)).webp({ quality: 88 }).toFile(feedWebp);
+export interface RenderPackOptions {
+  stem: string;
+  config?: SocialRenderConfig;
+  feedSceneLabel?: string;
+  reelSceneLabels?: readonly [string, string, string];
+  includeFeed?: boolean;
+  includeReel?: boolean;
+}
 
-  const frameSpecs = [
-    { name: "reel-scene-01.jpg", label: "SCENE 01" },
-    { name: "reel-scene-02.jpg", label: "SCENE 02" },
-    { name: "reel-scene-03.jpg", label: "SCENE 03" },
-  ];
+export async function renderAssetPack(outDir: string, options: RenderPackOptions): Promise<RenderedPack> {
+  const config = options.config ?? DEFAULT_CONFIG;
+  const includeFeed = options.includeFeed !== false;
+  const includeReel = options.includeReel !== false;
+  mkdirSync(outDir, { recursive: true });
+
+  const files: string[] = [];
+  let feedJpg: string | undefined;
+  let feedWebp: string | undefined;
+  if (includeFeed) {
+    const feedSvg = svgFor(FEED_LAYOUT, config, options.feedSceneLabel ?? "SCENE 01");
+    feedJpg = join(outDir, `${options.stem}-feed.jpg`);
+    feedWebp = join(outDir, `${options.stem}-feed.webp`);
+    await sharp(Buffer.from(feedSvg)).jpeg({ quality: 88, chromaSubsampling: "4:2:0" }).toFile(feedJpg);
+    await sharp(Buffer.from(feedSvg)).webp({ quality: 88 }).toFile(feedWebp);
+    files.push(feedJpg, feedWebp);
+  }
+
+  const labels = options.reelSceneLabels ?? (["SCENE 01", "SCENE 02", "SCENE 03"] as const);
+  const frameSpecs = includeReel
+    ? labels.map((label, index) => ({
+        name: `${options.stem === "busy-week" ? "reel" : `${options.stem}-reel`}-scene-0${index + 1}.jpg`,
+        label,
+      }))
+    : [];
   const frames: string[] = [];
   for (const spec of frameSpecs) {
     const path = join(outDir, spec.name);
     const svg = svgFor(REEL_LAYOUT, config, spec.label);
     await sharp(Buffer.from(svg)).jpeg({ quality: 88, chromaSubsampling: "4:2:0" }).toFile(path);
     frames.push(path);
+    files.push(path);
   }
 
-  const reelMp4 = join(outDir, "busy-week-reel.mp4");
-  const ffmpeg = spawnSync(
-    "ffmpeg",
-    [
-      "-y",
-      "-loop",
-      "1",
-      "-t",
-      "1",
-      "-i",
-      frames[0]!,
-      "-loop",
-      "1",
-      "-t",
-      "1",
-      "-i",
-      frames[1]!,
-      "-loop",
-      "1",
-      "-t",
-      "1",
-      "-i",
-      frames[2]!,
-      "-filter_complex",
-      "[0:v][1:v][2:v]concat=n=3:v=1:a=0,format=yuv420p",
-      "-c:v",
-      "libx264",
-      "-pix_fmt",
-      "yuv420p",
-      "-an",
-      "-movflags",
-      "+faststart",
-      reelMp4,
-    ],
-    { encoding: "utf8" },
-  );
-  if (ffmpeg.status !== 0) {
-    throw new Error(`ffmpeg failed: ${ffmpeg.stderr || ffmpeg.stdout || "unknown"}`);
+  let reelMp4: string | undefined;
+  let storyboard: string | undefined;
+  if (includeReel) {
+    reelMp4 = join(outDir, options.stem === "busy-week" ? "busy-week-reel.mp4" : `${options.stem}-reel.mp4`);
+    const ffmpeg = spawnSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-loop",
+        "1",
+        "-t",
+        "1",
+        "-i",
+        frames[0]!,
+        "-loop",
+        "1",
+        "-t",
+        "1",
+        "-i",
+        frames[1]!,
+        "-loop",
+        "1",
+        "-t",
+        "1",
+        "-i",
+        frames[2]!,
+        "-filter_complex",
+        "[0:v][1:v][2:v]concat=n=3:v=1:a=0,format=yuv420p",
+        "-c:v",
+        "libx264",
+        "-pix_fmt",
+        "yuv420p",
+        "-an",
+        "-movflags",
+        "+faststart",
+        reelMp4,
+      ],
+      { encoding: "utf8" },
+    );
+    if (ffmpeg.status !== 0) {
+      throw new Error(`ffmpeg failed: ${ffmpeg.stderr || ffmpeg.stdout || "unknown"}`);
+    }
+    files.push(reelMp4);
+
+    storyboard = join(
+      outDir,
+      options.stem === "busy-week" ? "busy-week-storyboard.json" : `${options.stem}-storyboard.json`,
+    );
+    writeFileSync(
+      storyboard,
+      `${JSON.stringify(
+        {
+          kind: "deterministic_storyboard",
+          config_id: config.id,
+          copy: config.copy,
+          frames: frameSpecs.map((spec, index) => ({
+            index,
+            file: spec.name,
+            duration_seconds: 1,
+            label: spec.label,
+          })),
+          video: {
+            file: options.stem === "busy-week" ? "busy-week-reel.mp4" : `${options.stem}-reel.mp4`,
+            width: 1080,
+            height: 1920,
+            codec: "h264",
+            audio: "none",
+            note: "H.264 checksums may vary across ffmpeg builds; storyboard JSON and source frames are the deterministic video-equivalent.",
+          },
+          provenance: {
+            generator: "tr-control-plane/social-render",
+            source: "code",
+            external_media: false,
+            paid_assets: false,
+            music: false,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    files.push(storyboard);
   }
 
-  const storyboard = join(outDir, "busy-week-storyboard.json");
-  writeFileSync(
-    storyboard,
-    `${JSON.stringify(
-      {
-        kind: "deterministic_storyboard",
-        config_id: config.id,
-        copy: config.copy,
-        frames: frameSpecs.map((spec, index) => ({
-          index,
-          file: spec.name,
-          duration_seconds: 1,
-          label: spec.label,
-        })),
-        video: {
-          file: "busy-week-reel.mp4",
-          width: 1080,
-          height: 1920,
-          codec: "h264",
-          audio: "none",
-          note: "H.264 checksums may vary across ffmpeg builds; storyboard JSON and source frames are the deterministic video-equivalent.",
-        },
-        provenance: {
-          generator: "tr-control-plane/social-render",
-          source: "code",
-          external_media: false,
-          paid_assets: false,
-          music: false,
-        },
-      },
-      null,
-      2,
-    )}\n`,
-  );
+  return { configId: config.id, files, feedJpg, feedWebp, reelMp4, storyboard, frames };
+}
 
-  return { feedJpg, feedWebp, reelMp4, storyboard, frames, configId: config.id };
+export async function renderBenchmarkAssets(outDir: string, config = DEFAULT_CONFIG): Promise<RenderedAssets> {
+  const pack = await renderAssetPack(outDir, { stem: "busy-week", config });
+  if (!pack.feedJpg || !pack.feedWebp || !pack.reelMp4 || !pack.storyboard) {
+    throw new Error("benchmark pack missing required files");
+  }
+  return {
+    feedJpg: pack.feedJpg,
+    feedWebp: pack.feedWebp,
+    reelMp4: pack.reelMp4,
+    storyboard: pack.storyboard,
+    frames: pack.frames,
+    configId: pack.configId,
+  };
 }

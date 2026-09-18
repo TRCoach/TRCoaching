@@ -13,6 +13,7 @@
     "validate": "tsx src/cli.ts validate",
     "benchmark:social": "tsx src/cli.ts benchmark-social",
     "qa:social": "tsx src/cli.ts qa-social",
+    "qa:next-week": "tsx src/cli.ts qa-next-week",
     "console:dev": "tsc -p tsconfig.web.json && tsx src/console/http.ts",
     "console:start": "node dist/console/http.js",
     "console:build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",

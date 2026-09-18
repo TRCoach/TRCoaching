@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/week-social-qa.schema.json",
+  "title": "TR next-week social technical QA report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "report_id",
+    "kind",
+    "created_at",
+    "repo",
+    "bounded_task",
+    "event_id",
+    "correlation_id",
+    "week",
+    "evidence_refs",
+    "commands",
+    "assets",
+    "rule_checks",
+    "technical_qa_pass",
+    "state_model_coverage",
+    "live_integration_gaps",
+    "external_writes",
+    "publication_occurred",
+    "paid_spend",
+    "bounded_task_only",
+    "proof"
+  ],
+  "properties": {
+    "report_id": { "type": "string" },
+    "kind": { "type": "string", "const": "social_asset_production_qa" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "repo": { "type": "string", "const": "TRCoach/TRCoaching" },
+    "bounded_task": { "type": "string" },
+    "event_id": { "type": "string" },
+    "correlation_id": { "type": "string" },
+    "week": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "timezone", "id"],
+      "properties": {
+        "start": { "type": "string" },
+        "end": { "type": "string" },
+        "timezone": { "type": "string" },
+        "id": { "type": "string" }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "result"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "type": "string" },
+          "exit_code": { "type": "integer" }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "calendar_path": { "type": "string" },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "https://trcoach.local/schemas/social-qa.schema.json" }
+    },
+    "rule_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "pass", "gate", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "pass": { "type": "boolean" },
+          "gate": { "type": "string", "enum": ["technical", "publication"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "technical_qa_pass": { "type": "boolean" },
+    "state_model_coverage": {
+      "type": "object",
+      "required": ["states", "transitions"],
+      "properties": {
+        "states": { "type": "integer" },
+        "transitions": { "type": "integer" },
+        "required_fields_present": { "type": "boolean" }
+      }
+    },
+    "live_integration_gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "external_writes": { "type": "integer", "const": 0 },
+    "publication_occurred": { "type": "boolean", "const": false },
+    "paid_spend": { "type": "boolean", "const": false },
+    "bounded_task_only": { "type": "boolean", "const": true },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapters_dry_run",
+        "publish_eligible",
+        "taylor_pass",
+        "chatgpt_pass",
+        "technical_qa_pass",
+        "exact_final_dual_pass"
+      ],
+      "properties": {
+        "adapters_dry_run": { "type": "boolean", "const": true },
+        "publish_eligible": { "type": "boolean", "const": false },
+        "taylor_pass": { "type": "boolean", "const": false },
+        "chatgpt_pass": { "type": "boolean", "const": false },
+        "technical_qa_pass": { "type": "boolean" },
+        "exact_final_dual_pass": { "type": "boolean", "const": false }
+      }
+    }
+  }
+}
