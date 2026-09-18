@@ -1,6 +1,6 @@
-import { readFileSync } from "node:fs";
 import { invokeAdapter } from "../adapters/dry-run.js";
 import { assertDryRun } from "../adapters/contracts.js";
+import { BUNDLED_LIFECYCLE, loadJsonWithFallback } from "../model-json.js";
 import { modelPath } from "../paths.js";
 import { assertNoSensitivePayload } from "../sensitive.js";
 import type {
@@ -38,8 +38,8 @@ const TRANSITION_FIELDS = [
   "idempotencyKey",
 ] as const;
 
-export function loadLifecycle(path = modelPath("lifecycle.json")): LifecycleModel {
-  return JSON.parse(readFileSync(path, "utf8")) as LifecycleModel;
+export function loadLifecycle(path?: string): LifecycleModel {
+  return loadJsonWithFallback(path, BUNDLED_LIFECYCLE, modelPath("lifecycle.json"));
 }
 
 export function assertTransitionShape(transition: LifecycleTransition): string[] {

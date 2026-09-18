@@ -1,9 +1,9 @@
-import { readFileSync } from "node:fs";
+import { BUNDLED_FOUNDER_ACTIONS, loadJsonWithFallback } from "../model-json.js";
 import { modelPath } from "../paths.js";
 import { FOUNDER_ACTION_TITLES, REQUIRED_ACTION_FIELDS, type FounderActionCatalog, type FounderActionConfig } from "./types.js";
 
-export function loadFounderActions(path = modelPath("founder-actions.json")): FounderActionCatalog {
-  return JSON.parse(readFileSync(path, "utf8")) as FounderActionCatalog;
+export function loadFounderActions(path?: string): FounderActionCatalog {
+  return loadJsonWithFallback(path, BUNDLED_FOUNDER_ACTIONS, modelPath("founder-actions.json"));
 }
 
 export function assertActionCompleteness(catalog = loadFounderActions()): string[] {

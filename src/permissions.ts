@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { BUNDLED_PERMISSIONS, loadJsonWithFallback } from "./model-json.js";
 import { modelPath } from "./paths.js";
 import type { EvidenceMap, Owner } from "./types.js";
 
@@ -59,8 +59,8 @@ export function withTrustedMode(registry: PermissionRegistry, mode: OperatingMod
   return { ...registry, currentMode: mode };
 }
 
-export function loadPermissions(path = modelPath("permissions.json")): PermissionRegistry {
-  return JSON.parse(readFileSync(path, "utf8")) as PermissionRegistry;
+export function loadPermissions(path?: string): PermissionRegistry {
+  return loadJsonWithFallback(path, BUNDLED_PERMISSIONS, modelPath("permissions.json"));
 }
 
 export function permissionAllowed(

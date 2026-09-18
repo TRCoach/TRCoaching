@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { FounderAuth } from "../src/console/auth.ts";
-import { MemoryD1, D1Store, RevisionConflictError, WriterLockError, throttleRefresh } from "../src/console/d1-store.ts";
+import { MemoryD1, D1Store, D1_SCHEMA_SQL, RevisionConflictError, WriterLockError, throttleRefresh } from "../src/console/d1-store.ts";
 import { emptyData } from "../src/console/store.ts";
 import { MemoryStore } from "../src/console/store.ts";
 import { JsonFileStore } from "../src/console/file-store.ts";
@@ -18,6 +18,7 @@ import { ChatGptDispatch } from "../src/console/openai-responses.ts";
 import { ConsoleService } from "../src/console/service.ts";
 import { startConsoleServer } from "../src/console/http.ts";
 import { loadPermissions } from "../src/permissions.ts";
+import { BUNDLED_PERMISSIONS, loadJsonWithFallback } from "../src/model-json.ts";
 import { forbiddenKeys } from "../src/sensitive.ts";
 import { authHeaders, loginFounder } from "./console-auth.ts";
 import worker from "../src/worker/index.ts";
@@ -386,5 +387,75 @@ describe("founder console phase C static acceptance", () => {
     assert.match(wrangler, /workers.dev/);
     assert.match(wrangler, /d1_databases/);
     assert.match(wrangler, /FOUNDER_OPENAI_DISABLED/);
+  });
+
+  it("keeps bundled Worker model JSON identical to repo model files", () => {
+    for (const name of ["permissions.json", "founder-actions.json", "lifecycle.json"]) {
+      assert.equal(readFileSync(`src/bundled/${name}`, "utf8"), readFileSync(`model/${name}`, "utf8"));
+    }
+    assert.equal(BUNDLED_PERMISSIONS.currentMode, "TEST");
+    assert.match(D1_SCHEMA_SQL, /CREATE TABLE IF NOT EXISTS console_meta/);
+    assert.match(D1_SCHEMA_SQL, /CREATE TABLE IF NOT EXISTS sessions/);
+  });
+
+  it("falls back to bundled JSON when the default model path is missing", () => {
+    const fallback = loadJsonWithFallback(undefined, { currentMode: "TEST" as const }, "/not-a-real/permissions.json");
+    assert.equal(fallback.currentMode, "TEST");
+    assert.throws(() => loadJsonWithFallback("/also-missing/permissions.json", { currentMode: "TEST" as const }, "/default"));
+  });
+});
+
+describe("founder console worker login path without repo filesystem or D1 tables", () => {
+  it("returns JSON session and login without a Worker exception when D1 schema is missing", async () => {
+    class SchemaOnDemandD1 extends MemoryD1 {
+      #ready = false;
+      override prepare(sql: string) {
+        if (!this.#ready && /FROM console_meta/i.test(sql)) {
+          throw new Error("no such table: console_meta");
+        }
+        return super.prepare(sql);
+      }
+      override async exec() {
+        this.#ready = true;
+        return { success: true };
+      }
+    }
+    const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
+    const env = {
+      DB: new SchemaOnDemandD1(),
+      FOUNDER_SESSION_SECRET: "tr-founder-phase-c-session-secret-32ch",
+      FOUNDER_AUTH_PASSWORD_HASH: hash,
+      FOUNDER_OPENAI_DISABLED: "1",
+    };
+    const session = await worker.fetch(new Request("https://tr-founder-console.workers.dev/api/session"), env);
+    assert.equal(session.status, 200);
+    assert.equal(session.headers.get("content-type")?.includes("application/json"), true);
+    const sessionBody = (await session.json()) as { authenticated?: boolean; reason?: string };
+    assert.equal(sessionBody.authenticated, false);
+    assert.notEqual(sessionBody.reason, "founder console worker exception");
+    const denied = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "founder", password: "wrong-password" }),
+      }),
+      env,
+    );
+    assert.equal(denied.status, 401);
+    const deniedBody = (await denied.json()) as { ok?: boolean; reason?: string };
+    assert.equal(deniedBody.ok, false);
+    assert.notEqual(deniedBody.reason, "founder console worker exception");
+    const login = await worker.fetch(
+      new Request("https://tr-founder-console.workers.dev/api/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: "founder", password: "phase-c-test-password" }),
+      }),
+      env,
+    );
+    assert.equal(login.status, 200);
+    const loginBody = (await login.json()) as { ok?: boolean; csrf?: string };
+    assert.equal(loginBody.ok, true);
+    assert.ok(loginBody.csrf);
   });
 });

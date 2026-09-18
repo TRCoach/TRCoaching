@@ -6,6 +6,7 @@ import type { DecisionAct } from "../console/types.js";
 import { collectEvidence, readEvidenceEnv } from "../console/evidence.js";
 import { DispatchEngine, LiveSlackTransport, MemorySlackTransport, CursorDispatch, ChatGptDispatch } from "../console/dispatch.js";
 import { D1Store } from "../console/d1-store.js";
+import type { ConsoleStore, StoreData } from "../console/store.js";
 import { assertNoSensitivePayload, forbiddenKeys } from "../sensitive.js";
 import { CURSOR_REHEARSAL_REF } from "../console/rehearsal.js";
 import { validateWorkerEnv, type WorkerBindings } from "./env.js";
@@ -80,53 +81,6 @@ async function handle(request: Request, env: WorkerBindings): Promise<Response> 
     const d1 = new D1Store(env.DB as unknown as import("../console/d1-store.js").D1Like);
     const snapshot = await d1.load();
     const store = d1.hydrate(snapshot);
-    const permissions = loadPermissions();
-    const evidenceEnv = {
-      ...readEvidenceEnv({
-        FOUNDER_OPENAI_DISABLED: "1",
-        SLACK_BOT_TOKEN: env.SLACK_BOT_TOKEN,
-        SLACK_AI_OPS_CHANNEL: env.SLACK_AI_OPS_CHANNEL,
-        SLACK_DISPATCH_ENABLED: env.SLACK_DISPATCH_ENABLED,
-        CURSOR_CLOUD_AGENT_TOKEN: env.CURSOR_CLOUD_AGENT_TOKEN,
-        CURSOR_ALLOW_REPO: env.CURSOR_ALLOW_REPO,
-        CURSOR_STARTING_REF: env.CURSOR_STARTING_REF ?? CURSOR_REHEARSAL_REF,
-        CURSOR_MODEL: env.CURSOR_MODEL,
-        TR_DRIVE_READONLY_TOKEN: env.TR_DRIVE_READONLY_TOKEN,
-        TR_CRM_READONLY_TOKEN: env.TR_CRM_READONLY_TOKEN,
-        TR_CRM_READONLY_URL: env.TR_CRM_READONLY_URL,
-        TR_METRICOOL_READONLY_TOKEN: env.TR_METRICOOL_READONLY_TOKEN,
-        TR_METRICOOL_READONLY_URL: env.TR_METRICOOL_READONLY_URL,
-        TR_STRIPE_READONLY_TOKEN: env.TR_STRIPE_READONLY_TOKEN,
-        TR_SUPERSET_READONLY_TOKEN: env.TR_SUPERSET_READONLY_TOKEN,
-        TR_SUPERSET_READONLY_URL: env.TR_SUPERSET_READONLY_URL,
-        GITHUB_READONLY_TOKEN: env.GITHUB_READONLY_TOKEN,
-      } as NodeJS.ProcessEnv),
-      openaiForcedOff: true,
-      chatgptDispatchEnabled: false,
-    };
-    const slack =
-      evidenceEnv.slackDispatchEnabled && evidenceEnv.slackToken
-        ? new LiveSlackTransport(evidenceEnv.slackToken, evidenceEnv.slackChannel, true)
-        : new MemorySlackTransport();
-    const dispatch = new DispatchEngine(
-      store,
-      permissions,
-      slack,
-      new CursorDispatch({
-        token: evidenceEnv.cursorToken,
-        allowRepo: evidenceEnv.cursorAllowRepo,
-        startingRef: evidenceEnv.cursorStartingRef ?? CURSOR_REHEARSAL_REF,
-        requestedModel: evidenceEnv.cursorModel,
-        autoCreatePR: false,
-      }),
-      new ChatGptDispatch({ enabled: false }),
-      collectEvidence(evidenceEnv),
-    );
-    const service = new ConsoleService(permissions, {
-      store,
-      dispatch,
-      evidence: snapshot.evidenceCards.length ? snapshot.evidenceCards : collectEvidence(evidenceEnv),
-    });
     const auth = new FounderAuth(store, {
       username: env.FOUNDER_AUTH_USER ?? "founder",
       passwordHash: env.FOUNDER_AUTH_PASSWORD_HASH!,
@@ -134,7 +88,12 @@ async function handle(request: Request, env: WorkerBindings): Promise<Response> 
       secureCookies: true,
       allowDev: false,
     });
-
+    const publicAuthPath =
+      (request.method === "GET" && url.pathname === "/api/session") ||
+      (request.method === "POST" && url.pathname === "/api/login");
+    const service = publicAuthPath
+      ? undefined
+      : createConsoleService(env, store, snapshot);
     const response = await route(service, auth, request, url, env);
     if (request.method !== "GET") {
       try {
@@ -148,10 +107,58 @@ async function handle(request: Request, env: WorkerBindings): Promise<Response> 
     return response;
 }
 
-
+function createConsoleService(env: WorkerBindings, store: ConsoleStore, snapshot: StoreData): ConsoleService {
+  const permissions = loadPermissions();
+  const evidenceEnv = {
+    ...readEvidenceEnv({
+      FOUNDER_OPENAI_DISABLED: "1",
+      SLACK_BOT_TOKEN: env.SLACK_BOT_TOKEN,
+      SLACK_AI_OPS_CHANNEL: env.SLACK_AI_OPS_CHANNEL,
+      SLACK_DISPATCH_ENABLED: env.SLACK_DISPATCH_ENABLED,
+      CURSOR_CLOUD_AGENT_TOKEN: env.CURSOR_CLOUD_AGENT_TOKEN,
+      CURSOR_ALLOW_REPO: env.CURSOR_ALLOW_REPO,
+      CURSOR_STARTING_REF: env.CURSOR_STARTING_REF ?? CURSOR_REHEARSAL_REF,
+      CURSOR_MODEL: env.CURSOR_MODEL,
+      TR_DRIVE_READONLY_TOKEN: env.TR_DRIVE_READONLY_TOKEN,
+      TR_CRM_READONLY_TOKEN: env.TR_CRM_READONLY_TOKEN,
+      TR_CRM_READONLY_URL: env.TR_CRM_READONLY_URL,
+      TR_METRICOOL_READONLY_TOKEN: env.TR_METRICOOL_READONLY_TOKEN,
+      TR_METRICOOL_READONLY_URL: env.TR_METRICOOL_READONLY_URL,
+      TR_STRIPE_READONLY_TOKEN: env.TR_STRIPE_READONLY_TOKEN,
+      TR_SUPERSET_READONLY_TOKEN: env.TR_SUPERSET_READONLY_TOKEN,
+      TR_SUPERSET_READONLY_URL: env.TR_SUPERSET_READONLY_URL,
+      GITHUB_READONLY_TOKEN: env.GITHUB_READONLY_TOKEN,
+    } as NodeJS.ProcessEnv),
+    openaiForcedOff: true,
+    chatgptDispatchEnabled: false,
+  };
+  const slack =
+    evidenceEnv.slackDispatchEnabled && evidenceEnv.slackToken
+      ? new LiveSlackTransport(evidenceEnv.slackToken, evidenceEnv.slackChannel, true)
+      : new MemorySlackTransport();
+  const dispatch = new DispatchEngine(
+    store,
+    permissions,
+    slack,
+    new CursorDispatch({
+      token: evidenceEnv.cursorToken,
+      allowRepo: evidenceEnv.cursorAllowRepo,
+      startingRef: evidenceEnv.cursorStartingRef ?? CURSOR_REHEARSAL_REF,
+      requestedModel: evidenceEnv.cursorModel,
+      autoCreatePR: false,
+    }),
+    new ChatGptDispatch({ enabled: false }),
+    collectEvidence(evidenceEnv),
+  );
+  return new ConsoleService(permissions, {
+    store,
+    dispatch,
+    evidence: snapshot.evidenceCards.length ? snapshot.evidenceCards : collectEvidence(evidenceEnv),
+  });
+}
 
 async function route(
-  service: ConsoleService,
+  service: ConsoleService | undefined,
   auth: FounderAuth,
   request: Request,
   url: URL,
@@ -178,6 +185,10 @@ async function route(
     cookies.append("set-cookie", sessionCookie(result.token, true));
     cookies.append("set-cookie", csrfCookie(result.session.csrf, true));
     return json(200, { ok: true, csrf: result.session.csrf, expiresAt: result.session.expiresAt }, cookies);
+  }
+
+  if (!service) {
+    return json(500, { ok: false, reason: "founder console worker exception", unauthorizedBusinessWrites: 0 });
   }
 
   if (method !== "GET") {
