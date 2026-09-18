@@ -60,6 +60,16 @@
     "external_writes": { "type": "integer", "const": 0 },
     "publication_occurred": { "type": "boolean", "const": false },
     "paid_spend": { "type": "boolean", "const": false },
-    "bounded_task_only": { "type": "boolean", "const": true }
+    "bounded_task_only": { "type": "boolean", "const": true },
+    "proof": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "adapters_dry_run": { "type": "boolean" },
+        "publish_eligible": { "type": "boolean" },
+        "taylor_pass": { "type": "boolean" },
+        "chatgpt_pass": { "type": "boolean" }
+      }
+    }
   }
 }

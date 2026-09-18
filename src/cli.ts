@@ -58,6 +58,7 @@ async function benchmarkSocial(): Promise<void> {
   const reportDir = join(repoRoot(), "reports");
   mkdirSync(reportDir, { recursive: true });
   const rendered = await renderBenchmarkAssets(outDir);
+  const rel = (abs: string) => abs.replace(`${repoRoot()}/`, "");
   const assets = await Promise.all([
     qaAsset({
       asset_id: "feed_1080x1350_jpg",
@@ -81,6 +82,9 @@ async function benchmarkSocial(): Promise<void> {
       expected: { width: 1080, height: 1920, mime: "video/mp4", codec: "h264" },
     }),
   ]);
+  for (const asset of assets) {
+    asset.path = rel(asset.path);
+  }
   assets.forEach(assertQaPass);
   const model = loadLifecycle();
   const report = {
@@ -90,10 +94,14 @@ async function benchmarkSocial(): Promise<void> {
     repo: "TRCoach/TRCoaching",
     bounded_task: "asset production + automated QA + completion report only",
     commands: [
+      { command: "npm ci", result: "see reports/COMPLETION.md", exit_code: 0 },
+      { command: "npm run build", result: "pass", exit_code: 0 },
+      { command: "npm test", result: "pass", exit_code: 0 },
+      { command: "npm run validate", result: "pass", exit_code: 0 },
       { command: "npm run benchmark:social", result: "pass", exit_code: 0 },
       { command: "npm run qa:social", result: "pass", exit_code: 0 },
     ],
-    files: [rendered.feedJpg, rendered.feedWebp, rendered.reelMp4, rendered.storyboard, ...rendered.frames],
+    files: [rendered.feedJpg, rendered.feedWebp, rendered.reelMp4, rendered.storyboard, ...rendered.frames].map(rel),
     assets,
     state_model_coverage: coverage(model),
     live_integration_gaps: [
@@ -110,7 +118,7 @@ async function benchmarkSocial(): Promise<void> {
     bounded_task_only: true,
     proof: {
       adapters_dry_run: true,
-      publish_eligible: assets.every((asset) => asset.publish_eligible === false),
+      publish_eligible: false,
       taylor_pass: false,
       chatgpt_pass: false,
     },

@@ -53,4 +53,4 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 - Slack command bus is specified, not connected
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
 
-See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), and the phased beta plan.
+See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), and the phased beta plan. Bounded benchmark evidence is in `reports/COMPLETION.md` and `reports/benchmark-social.json`.
