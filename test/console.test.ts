@@ -172,6 +172,12 @@ describe("founder console phase A", () => {
     assert.equal(normalizePrompt(curly), normalizePrompt(EXACT_PROMPTS.marketing_and_schedule));
     assert.equal(classifyCommand(curly).confidence, "exact");
   });
+
+  it("routes founder wording for next-week social preparation", () => {
+    const classification = classifyCommand("Prepare next week's social media and show me every blocker and owner.");
+    assert.equal(classification.confidence, "keyword");
+    assert.deepEqual(classification.actionIds, ["generate_next_weeks_marketing"]);
+  });
 });
 
 describe("founder console HTTP smoke", () => {

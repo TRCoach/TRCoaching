@@ -192,6 +192,56 @@ describe("founder console phase C rehearsals", () => {
     assert.ok(collected.rejected.some((item) => /not allowlisted/.test(item.reason)));
   });
 
+  it("accepts the approved Grok/Alex status envelope used in #ai-ops", async () => {
+    const eventId = "evt_live_shape";
+    const correlationId = "corr_live_shape";
+    const statusText = [
+      "COMPLETED",
+      "Grok_Alex: OPS_STATUS",
+      `event_id=${eventId}`,
+      `correlation_id=${correlationId}`,
+      "owner=Alex",
+      "status=COMPLETED",
+      "current_state=TEST",
+      "bounded_action=slack_grok_rehearsal",
+      "verified_evidence=ingested approved event; zero business-system writes; one status reply only",
+      "state_after=TEST",
+      "next_trigger=none",
+    ].join("\n");
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("conversations.history")) {
+        return new Response(JSON.stringify({ ok: true, messages: [] }));
+      }
+      return new Response(JSON.stringify({
+        ok: true,
+        messages: [
+          { ts: "300.1", bot_id: "B_CONSOLE", text: "Grok_Alex: OPS_EVENT" },
+          { ts: "300.2", user: "U_APPROVED", text: statusText },
+        ],
+      }));
+    };
+    const transport = new LiveSlackTransport("xoxb-test", "C0C2B0TFN48", true, "U_APPROVED", fetchImpl);
+    const collected = await transport.collect([{
+      id: eventId,
+      correlationId,
+      title: "Live-shaped return",
+      owner: "Alex",
+      executor: "Slack",
+      status: "AWAITING_EXTERNAL",
+      boundedAction: "slack_grok_rehearsal",
+      evidenceRefs: [],
+      resultSummary: "posted",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      externalId: "300.1",
+      founderGate: false,
+    }]);
+    assert.equal(collected.statuses.length, 1);
+    assert.equal(collected.statuses[0]?.status, "COMPLETED");
+    assert.match(collected.statuses[0]?.detail ?? "", /zero business-system writes/);
+  });
+
   it("emits one Slack OPS_EVENT and accepts only a matching idempotent OPS_STATUS", async () => {
     const slack = new MemorySlackTransport();
     const store = new MemoryStore();
