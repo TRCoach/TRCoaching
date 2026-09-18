@@ -365,6 +365,28 @@ describe("founder console phase C rehearsals", () => {
     assert.deepEqual(verified.tests, ["validate"]);
   });
 
+  it("does not invoke Cursor fetch with the dispatch instance as this", async () => {
+    let observedThis: unknown = "not-called";
+    const fetchImpl: typeof fetch = async function (this: unknown, input, init) {
+      observedThis = this;
+      const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
+      return new Response(
+        JSON.stringify({ agent: { id: body.agentId, latestRunId: "run-unbound" }, run: { id: "run-unbound", status: "CREATING" } }),
+        { status: 201 },
+      );
+    };
+    const cursor = new CursorDispatch({
+      token: "server-only",
+      allowRepo: "TRCoach/TRCoaching",
+      startingRef: "cursor/tr-training-control-plane-fcd0",
+      autoCreatePR: false,
+      fetchImpl,
+    });
+    const result = await runCursorRehearsal(new MemoryStore(), cursor);
+    assert.equal(result.ok, true);
+    assert.equal(observedThis, undefined);
+  });
+
   it("fail-closes a Cursor transport exception as an auditable blocked job", async () => {
     const cursor = new CursorDispatch({
       token: "server-only",

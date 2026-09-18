@@ -268,7 +268,8 @@ export class CursorDispatch implements WorkerDispatch {
     path: string,
     body?: unknown,
   ): Promise<{ status: number; body: unknown }> {
-    const response = await this.fetchImpl(`${this.apiBase}${path}`, {
+    const fetchImpl = this.fetchImpl;
+    const response = await fetchImpl(`${this.apiBase}${path}`, {
       method,
       headers: {
         authorization: `Bearer ${this.token}`,
