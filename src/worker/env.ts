@@ -8,6 +8,7 @@ export interface WorkerBindings {
   SLACK_BOT_TOKEN?: string;
   SLACK_AI_OPS_CHANNEL?: string;
   SLACK_DISPATCH_ENABLED?: string;
+  SLACK_APPROVED_STATUS_SENDER_IDS?: string;
   CURSOR_CLOUD_AGENT_TOKEN?: string;
   CURSOR_ALLOW_REPO?: string;
   CURSOR_STARTING_REF?: string;

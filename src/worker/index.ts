@@ -2,7 +2,7 @@ import { loadPermissions } from "../permissions.js";
 import { FounderAuth, parseCookies, sessionCookie, csrfCookie, clearCookies } from "../console/auth.js";
 import { ConsoleService } from "../console/service.js";
 import type { ActionPreference } from "../console/store.js";
-import type { DecisionAct } from "../console/types.js";
+import type { DecisionAct, LaneActionAct, LaneId } from "../console/types.js";
 import { collectEvidence, readEvidenceEnv } from "../console/evidence.js";
 import { DispatchEngine, LiveSlackTransport, MemorySlackTransport, CursorDispatch, ChatGptDispatch } from "../console/dispatch.js";
 import { D1Store } from "../console/d1-store.js";
@@ -135,6 +135,7 @@ function createConsoleService(env: WorkerBindings, store: ConsoleStore, snapshot
       SLACK_BOT_TOKEN: env.SLACK_BOT_TOKEN,
       SLACK_AI_OPS_CHANNEL: env.SLACK_AI_OPS_CHANNEL,
       SLACK_DISPATCH_ENABLED: env.SLACK_DISPATCH_ENABLED,
+      SLACK_APPROVED_STATUS_SENDER_IDS: env.SLACK_APPROVED_STATUS_SENDER_IDS,
       CURSOR_CLOUD_AGENT_TOKEN: env.CURSOR_CLOUD_AGENT_TOKEN,
       CURSOR_ALLOW_REPO: env.CURSOR_ALLOW_REPO,
       CURSOR_STARTING_REF: env.CURSOR_STARTING_REF ?? CURSOR_REHEARSAL_REF,
@@ -154,7 +155,12 @@ function createConsoleService(env: WorkerBindings, store: ConsoleStore, snapshot
   };
   const slack =
     evidenceEnv.slackDispatchEnabled && evidenceEnv.slackToken
-      ? new LiveSlackTransport(evidenceEnv.slackToken, evidenceEnv.slackChannel, true)
+      ? new LiveSlackTransport(
+          evidenceEnv.slackToken,
+          evidenceEnv.slackChannel,
+          true,
+          evidenceEnv.slackApprovedStatusSenderIds,
+        )
       : new MemorySlackTransport();
   const dispatch = new DispatchEngine(
     store,
@@ -239,8 +245,7 @@ async function route(
     const { operating_mode: _ignored, ...safe } = body;
     if (path === "/api/command") {
       const text = String(safe.text ?? "");
-      if (/progress everything that can be progressed today/i.test(text)) return json(200, await service.progressEverythingAsync());
-      return json(200, service.runCommand(text));
+      return json(200, await service.runCommandAsync(text));
     }
     if (path === "/api/jobs/refresh") return json(200, await service.refreshJobs());
     if (path === "/api/evidence/refresh") return json(200, await service.refreshEvidence());
@@ -277,7 +282,14 @@ async function route(
     const actionMatch = path.match(/^\/api\/actions\/([a-z0-9_]+)$/);
     if (actionMatch?.[1]) {
       if (actionMatch[1] === "progress_everything_today") return json(200, await service.progressEverythingAsync());
+      if (actionMatch[1] === "generate_next_weeks_marketing") return json(200, await service.prepareNextWeeksSocial());
       return json(200, service.runAction(actionMatch[1]));
+    }
+    const laneMatch = path.match(/^\/api\/lanes\/([a-z_]+)\/([A-Za-z0-9_-]+)\/(request-evidence|add-instruction|retry|resolve|acknowledge)$/);
+    if (laneMatch?.[1] && laneMatch[2] && laneMatch[3]) {
+      const act = laneMatch[3].replaceAll("-", "_") as LaneActionAct;
+      const result = service.laneAction(laneMatch[1] as LaneId, laneMatch[2], act, String(safe.comment ?? ""));
+      return json(result.ok ? 200 : 409, result);
     }
     const decideMatch = path.match(/^\/api\/inbox\/([a-z0-9_]+)\/(approve|reject|request-evidence)$/);
     if (decideMatch?.[1] && decideMatch[2]) {
