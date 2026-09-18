@@ -38,6 +38,8 @@ npm run console:check
 
 Unknown or ambiguous text is routed to Alex (`Grok_Alex:`) and ChatGPT review.
 
+Phase B QA delta: Cursor public-beta v1 and OpenAI Responses adapters are implemented but stay NOT_CONNECTED without server-only keys. Store is single-process JSON. No public deployment. No provider credentials are connected in this repo.
+
 ## What TEST will not do
 
 - Promote operating mode

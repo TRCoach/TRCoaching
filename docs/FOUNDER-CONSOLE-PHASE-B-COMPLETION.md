@@ -17,8 +17,8 @@ Branch/PR: `cursor/tr-training-control-plane-fcd0` / https://github.com/TRCoach/
 | --- | --- |
 | Drive, CRM, Metricool, Stripe, Superset, GitHub | NOT_CONNECTED (or DEMO_FIXTURE in explicit demo) |
 | Slack | Fake transport in tests/dev; live NOT_CONNECTED until enabled |
-| Cursor Cloud | NOT_CONNECTED |
-| ChatGPT | NOT_CONNECTED |
+| Cursor Cloud | v1 adapter wired; NOT_CONNECTED without server-only key |
+| ChatGPT | Responses adapter wired; spend disabled / NOT_CONNECTED by default |
 
 ## Preview
 

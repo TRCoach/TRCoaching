@@ -19,8 +19,8 @@ Founder-only sessions, HttpOnly/SameSite cookies, CSRF on mutations, login rate 
 1. Authenticated PWA  
 2. Read-only evidence adapters (honest NOT_CONNECTED/UNKNOWN/DEMO_FIXTURE)  
 3. Slack/Grok `Grok_Alex: OPS_EVENT` (fake in tests; live needs allowlisted #ai-ops)  
-4. Cursor contract (NOT_CONNECTED until a stable Cloud Agent API exists)  
-5. ChatGPT contract (NOT_CONNECTED until founder spend approval)  
+4. Cursor Cloud Agents API v1 (public beta) — NOT_CONNECTED without a server-only key  
+5. ChatGPT OpenAI Responses — NOT_CONNECTED until founder spend approval (`FOUNDER_CHATGPT_DISPATCH=1` + key + model)  
 6. Status collection / OPS_STATUS ingestion  
 7. Later: individually approved reversible writes only  
 

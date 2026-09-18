@@ -9,8 +9,10 @@ import { getAction, loadFounderActions } from "./actions.js";
 import { seedDecisions, seedLaneItems } from "./demo-state.js";
 import { classifyCommand } from "./router.js";
 import { MemoryStore, type ActionPreference, type ConsoleStore } from "./store.js";
-import { collectEvidence, type EvidenceCard } from "./evidence.js";
+import { collectEvidence, readEvidenceEnv, type EvidenceCard } from "./evidence.js";
 import { DispatchEngine, MemorySlackTransport, type DispatchSummary } from "./dispatch.js";
+import { probeConnectors } from "./probes.js";
+import type { ProbeResult } from "./http-probe.js";
 import {
   LANE_IDS,
   type ActionResult,
@@ -239,6 +241,9 @@ export class ConsoleService {
       lastDispatch: this.lastDispatch,
       approveAllAvailable: false,
       externalWrites: 0,
+      unauthorizedBusinessWrites: 0,
+      authorisedGovernedDispatchCount: this.dispatch.authorisedGovernedDispatchCount(),
+      writeScope: this.dispatch.writeScope(),
     };
   }
 
@@ -910,7 +915,67 @@ export class ConsoleService {
         note: "Customization never changes permissions or gates.",
       };
     }
+    if (kind === "connector") {
+      const card = this.evidenceCards.find((row) => row.id === id);
+      const probe = this.store.load().probes.find((row) => row.id === id);
+      return {
+        kind,
+        id,
+        title: card?.source ?? id,
+        owner: "Founder",
+        state: card?.freshness ?? "UNKNOWN",
+        blockers: card?.freshness === "NOT_CONNECTED" ? [card.setupRequirement] : [],
+        evidence: {
+          evidenceRef: card?.evidenceRef,
+          probeLabel: probe?.evidenceLabel,
+          lastAttempted: probe?.lastAttempted ?? card?.lastAttempted,
+          bodyDiscarded: probe?.bodyDiscarded ?? true,
+          setupRequirement: card?.setupRequirement,
+        },
+        source: card?.source,
+        timestamps: { lastAttempted: probe?.lastAttempted ?? card?.lastAttempted, lastVerified: card?.lastVerified },
+        nextAction: card?.freshness === "NOT_CONNECTED" ? "configure_connector" : "collect_worker_results",
+      };
+    }
     return { kind, id, state: "UNKNOWN", nextAction: "none" };
+  }
+
+  async refreshJobs() {
+    const refreshed = await this.dispatch.refresh();
+    const probes = await probeConnectors(readEvidenceEnv());
+    this.store.exclusive((data) => {
+      data.probes = probes.map((probe) => ({
+        id: probe.id,
+        lastAttempted: probe.lastAttempted,
+        evidenceLabel: probe.evidenceLabel,
+        bodyDiscarded: true as const,
+      }));
+    });
+    this.applyProbeLabels(probes);
+    this.lastDispatch = this.lastDispatch
+      ? { ...this.lastDispatch, authorisedGovernedDispatchCount: refreshed.authorisedGovernedDispatchCount }
+      : this.lastDispatch;
+    return {
+      ...refreshed,
+      probes: probes.map((probe) => ({
+        id: probe.id,
+        lastAttempted: probe.lastAttempted,
+        evidenceLabel: probe.evidenceLabel,
+        bodyDiscarded: true as const,
+      })),
+      unauthorizedBusinessWrites: 0 as const,
+    };
+  }
+
+  private applyProbeLabels(probes: ProbeResult[]): void {
+    for (const probe of probes) {
+      const card = this.evidenceCards.find((item) => item.id === probe.id);
+      if (!card) continue;
+      card.lastAttempted = probe.lastAttempted;
+      if (probe.status !== null) {
+        card.evidenceRef = probe.evidenceLabel;
+      }
+    }
   }
 
   progressEverything(correlationId = newId("corr")): ActionResult {

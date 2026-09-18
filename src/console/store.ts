@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "
 import { dirname, join } from "node:path";
 import { assertNoSensitivePayload } from "../sensitive.js";
 
-export const STORE_VERSION = 1;
+export const STORE_VERSION = 2;
 
 export interface ActionPreference {
   id: string;
@@ -37,7 +37,18 @@ export interface StoredJob {
   createdAt: string;
   updatedAt: string;
   externalId?: string;
+  runId?: string;
+  model?: string;
+  tests?: string[];
+  blockers?: string[];
   founderGate: boolean;
+}
+
+export interface StoredProbe {
+  id: string;
+  lastAttempted: string;
+  evidenceLabel: string;
+  bodyDiscarded: true;
 }
 
 export type DispatchStatus =
@@ -64,6 +75,7 @@ export interface StoreData {
   preferences: ActionPreference[];
   jobs: StoredJob[];
   audits: StoredAudit[];
+  probes: StoredProbe[];
 }
 
 export interface ConsoleStore {
@@ -73,17 +85,27 @@ export interface ConsoleStore {
 }
 
 function emptyData(): StoreData {
-  return { version: STORE_VERSION, sessions: [], preferences: [], jobs: [], audits: [] };
+  return { version: STORE_VERSION, sessions: [], preferences: [], jobs: [], audits: [], probes: [] };
 }
 
 function migrate(raw: StoreData): StoreData {
   const data = raw ?? emptyData();
-  if (!data.version || data.version < 1) {
-    data.version = 1;
-    data.sessions ??= [];
-    data.preferences ??= [];
-    data.jobs ??= [];
-    data.audits ??= [];
+  data.sessions ??= [];
+  data.preferences ??= [];
+  data.jobs ??= [];
+  data.audits ??= [];
+  data.probes ??= [];
+  if (!data.version || data.version < 1) data.version = 1;
+  if (data.version === 1) {
+    data.version = 2;
+    for (const job of data.jobs) {
+      job.tests ??= [];
+      job.blockers ??= [];
+    }
+  }
+  for (const job of data.jobs) {
+    job.tests ??= [];
+    job.blockers ??= [];
   }
   if (data.version !== STORE_VERSION) {
     throw new Error(`unsupported store version ${data.version}`);

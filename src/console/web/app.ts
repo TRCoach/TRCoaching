@@ -28,6 +28,9 @@ interface Snapshot {
   usage: { jobs: number; model: string; runtimeMs: number; retries: number; estimatedCostUsd: null; costStatus: string; note: string };
   preferences?: Pref[];
   lastDispatch?: { founderFriendlySummary: string; correlationId: string };
+  unauthorizedBusinessWrites?: number;
+  authorisedGovernedDispatchCount?: number;
+  writeScope?: string;
 }
 
 let csrf = "";
@@ -43,7 +46,8 @@ function badge(status: string): string {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
-    credentials: "include",
+    credentials: "same-origin",
+    mode: "same-origin",
     ...init,
     headers: {
       "content-type": "application/json",
@@ -86,7 +90,7 @@ function render(snap: Snapshot): void {
   (document.querySelector("#actions") as HTMLElement).innerHTML = snap.actions
     .map(
       (action) => `
-      <article class="card">
+      <article class="card" data-detail="action/${escape(action.id)}">
         <h3>${escape(action._pref?.icon ?? "◆")} ${escape(action.title)}</h3>
         <p>${escape(action.owner)} · ${escape(action.system)}</p>
         <p>${escape(action._pref?.description ?? action.success)}</p>
@@ -125,11 +129,11 @@ function render(snap: Snapshot): void {
     )
     .join("");
   const connectors = (snap.evidence ?? []).map(
-    (item) => `<article class="card lane ${item.freshness}" data-detail="action/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`,
+    (item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`,
   );
   (document.querySelector("#status") as HTMLElement).innerHTML = connectors.join("");
   const usage = snap.usage;
-  (document.querySelector("#usage") as HTMLElement).innerHTML = `<article class="row"><p>Jobs ${usage.jobs} · ${escape(usage.model)} · ${usage.runtimeMs}ms · retries ${usage.retries}</p><p>Cost: unknown (${usage.costStatus}), never $0.00.</p><p>${escape(usage.note)}</p></article>`;
+  (document.querySelector("#usage") as HTMLElement).innerHTML = `<article class="row"><p>Jobs ${usage.jobs} · ${escape(usage.model)} · ${usage.runtimeMs}ms · retries ${usage.retries}</p><p>Unauthorized business writes: ${snap.unauthorizedBusinessWrites ?? 0}. Authorised governed dispatch: ${snap.authorisedGovernedDispatchCount ?? 0}. Write scope: ${escape(snap.writeScope ?? "none")}.</p><p>Cost: unknown (${usage.costStatus}), never $0.00.</p><p>${escape(usage.note)}</p></article>`;
   bind(snap);
 }
 
@@ -231,6 +235,22 @@ document.querySelector("#command-form")?.addEventListener("submit", (event) => {
   })
     .then(async (result) => {
       (document.querySelector("#result") as HTMLElement).textContent = `${result.founderFriendlySummary}\n\n${result.correlationId ?? ""} ${result.mode}`;
+      await refresh();
+    })
+    .catch((error: unknown) => {
+      (document.querySelector("#result") as HTMLElement).textContent =
+        error instanceof Error ? error.message : String(error);
+    });
+});
+
+document.querySelector("#refresh-jobs")?.addEventListener("click", () => {
+  void api<{ collected: number; rejected: Array<{ reason: string }>; unauthorizedBusinessWrites: number; authorisedGovernedDispatchCount: number }>(
+    "/api/jobs/refresh",
+    { method: "POST", body: "{}" },
+  )
+    .then(async (result) => {
+      (document.querySelector("#result") as HTMLElement).textContent =
+        `Collected ${result.collected} worker result(s). Rejected ${result.rejected.length}. Unauthorized business writes: ${result.unauthorizedBusinessWrites}. Authorised governed dispatch: ${result.authorisedGovernedDispatchCount}.`;
       await refresh();
     })
     .catch((error: unknown) => {

@@ -4,6 +4,12 @@ import type { EvidenceMap } from "../types.js";
 import type { ConsoleStore, DispatchStatus, StoredJob } from "./store.js";
 import type { EvidenceCard, EvidenceEnv } from "./evidence.js";
 import { collectEvidence } from "./evidence.js";
+import { CursorDispatch, type WorkerDispatch, type WorkerResult } from "./cursor-v1.js";
+import { ChatGptDispatch } from "./openai-responses.js";
+import { parseGrokAlexOpsStatus, validateOpsStatusAgainstJob, type ParsedOpsStatus } from "./ops-status.js";
+
+export { CursorDispatch, type WorkerDispatch, type WorkerResult } from "./cursor-v1.js";
+export { ChatGptDispatch } from "./openai-responses.js";
 
 export interface OpsEnvelope {
   prefix: "Grok_Alex:";
@@ -26,14 +32,21 @@ export interface OpsStatus {
   detail: string;
 }
 
+export interface SlackCollectResult {
+  statuses: ParsedOpsStatus[];
+  rejected: Array<{ detail: string; reason: string }>;
+}
+
 export interface SlackTransport {
   configured: boolean;
   submit(envelope: OpsEnvelope): Promise<{ ok: boolean; externalId?: string; detail: string }>;
+  collect(jobs: StoredJob[]): Promise<SlackCollectResult>;
 }
 
 export class MemorySlackTransport implements SlackTransport {
   configured = true;
   posts: OpsEnvelope[] = [];
+  inbox: string[] = [];
   constructor(private failIds: string[] = []) {}
   async submit(envelope: OpsEnvelope) {
     if (this.failIds.includes(envelope.event_id)) {
@@ -43,6 +56,9 @@ export class MemorySlackTransport implements SlackTransport {
     if (dup) return { ok: true, externalId: `slack_${envelope.event_id}`, detail: "idempotent replay" };
     this.posts.push(envelope);
     return { ok: true, externalId: `slack_${envelope.event_id}`, detail: "fake slack accepted" };
+  }
+  async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
+    return collectOpsStatusMessages(this.inbox, jobs);
   }
 }
 
@@ -82,56 +98,46 @@ export class LiveSlackTransport implements SlackTransport {
     if (!body.ok) return { ok: false, detail: `Slack API: ${body.error ?? response.status}` };
     return { ok: true, externalId: body.ts, detail: "posted to allowlisted #ai-ops" };
   }
-}
-
-export interface WorkerDispatch {
-  id: "cursor" | "chatgpt";
-  configured: boolean;
-  setupRequirement: string;
-  dispatch(job: StoredJob): Promise<{ ok: boolean; status: DispatchStatus; detail: string; externalId?: string }>;
-}
-
-export class CursorDispatch implements WorkerDispatch {
-  id = "cursor" as const;
-  setupRequirement =
-    "No stable Cursor Cloud Agent HTTP dispatch API is implemented in this repo. Required: server-only token, allowlisted repo TRCoach/TRCoaching, bounded templates, idempotency. Never fake COMPLETED.";
-  constructor(private token?: string) {}
-  get configured(): boolean {
-    return false;
-  }
-  async dispatch(job: StoredJob) {
-    void this.token;
-    void job;
-    return {
-      ok: false,
-      status: "BLOCKED" as const,
-      detail: `Cursor Cloud NOT_CONNECTED. ${this.setupRequirement}`,
-    };
-  }
-}
-
-export class ChatGptDispatch implements WorkerDispatch {
-  id = "chatgpt" as const;
-  setupRequirement =
-    "FOUNDER_CHATGPT_DISPATCH=1 and OPENAI_API_KEY after founder spend approval. Until configured this adapter is NOT_CONNECTED and never fakes a review.";
-  constructor(
-    private enabled?: boolean,
-    private apiKey?: string,
-  ) {}
-  get configured(): boolean {
-    return Boolean(this.enabled && this.apiKey);
-  }
-  async dispatch(job: StoredJob) {
-    if (!this.configured) {
-      return { ok: false, status: "BLOCKED" as const, detail: `ChatGPT NOT_CONNECTED. ${this.setupRequirement}` };
+  async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
+    if (!this.configured) return { statuses: [], rejected: [] };
+    const response = await fetch(
+      `https://slack.com/api/conversations.history?channel=${encodeURIComponent(this.channel ?? "")}&limit=50`,
+      { headers: { authorization: `Bearer ${this.token}` } },
+    );
+    const body = (await response.json()) as { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
+    if (!body.ok) {
+      return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${body.error ?? response.status}` }] };
     }
-    void job;
-    return {
-      ok: false,
-      status: "BLOCKED" as const,
-      detail: "ChatGPT dispatch is configured but Phase B does not auto-call OpenAI. Founder must approve each spend. Not faked as COMPLETED.",
-    };
+    return collectOpsStatusMessages(
+      (body.messages ?? []).map((item) => item.text ?? ""),
+      jobs,
+    );
   }
+}
+
+export function collectOpsStatusMessages(messages: string[], jobs: StoredJob[]): SlackCollectResult {
+  const statuses: ParsedOpsStatus[] = [];
+  const rejected: Array<{ detail: string; reason: string }> = [];
+  for (const text of messages) {
+    if (!text.includes("OPS_STATUS") && !text.startsWith("Grok_Alex:")) continue;
+    const parsed = parseGrokAlexOpsStatus(text);
+    if (!parsed.status) {
+      rejected.push({ detail: text.slice(0, 80), reason: parsed.reason ?? "invalid OPS_STATUS" });
+      continue;
+    }
+    const job = jobs.find((item) => item.id === parsed.status!.event_id || item.externalId === parsed.status!.event_id);
+    if (!job) {
+      rejected.push({ detail: parsed.status.event_id, reason: "unknown event" });
+      continue;
+    }
+    const invalid = validateOpsStatusAgainstJob(parsed.status, job);
+    if (invalid) {
+      rejected.push({ detail: parsed.status.event_id, reason: invalid });
+      continue;
+    }
+    statuses.push(parsed.status);
+  }
+  return { statuses, rejected };
 }
 
 export interface SubEventPlan {
@@ -160,6 +166,15 @@ export interface DispatchSummary {
   decomposition: SubEventPlan[];
   slackPosts: number;
   unauthorizedWrites: 0;
+  authorisedGovernedDispatchCount: number;
+}
+
+export interface RefreshResult {
+  collected: number;
+  rejected: Array<{ detail: string; reason: string }>;
+  jobs: StoredJob[];
+  unauthorizedBusinessWrites: 0;
+  authorisedGovernedDispatchCount: number;
 }
 
 function newId(prefix: string): string {
@@ -187,10 +202,20 @@ export class DispatchEngine {
     );
   }
 
-  ingestStatus(status: OpsStatus): StoredJob | undefined {
+  ingestStatus(status: OpsStatus | ParsedOpsStatus): StoredJob | undefined {
     return this.store.exclusive((data) => {
       const job = data.jobs.find((item) => item.id === status.event_id || item.externalId === status.event_id);
       if (!job) return undefined;
+      const parsed: ParsedOpsStatus = {
+        kind: "OPS_STATUS",
+        event_id: status.event_id,
+        correlation_id: status.correlation_id,
+        status: status.status,
+        detail: status.detail,
+        executor: "executor" in status ? status.executor : undefined,
+      };
+      const invalid = validateOpsStatusAgainstJob(parsed, job);
+      if (invalid) return undefined;
       job.status = status.status;
       job.resultSummary = status.detail;
       job.updatedAt = new Date().toISOString();
@@ -204,6 +229,23 @@ export class DispatchEngine {
       });
       return { ...job };
     });
+  }
+
+  ingestStatusResult(status: OpsStatus | ParsedOpsStatus): { job?: StoredJob; rejected?: string } {
+    const data = this.store.load();
+    const job = data.jobs.find((item) => item.id === status.event_id || item.externalId === status.event_id);
+    if (!job) return { rejected: "unknown event" };
+    const parsed: ParsedOpsStatus = {
+      kind: "OPS_STATUS",
+      event_id: status.event_id,
+      correlation_id: status.correlation_id,
+      status: status.status,
+      detail: status.detail,
+      executor: "executor" in status ? status.executor : undefined,
+    };
+    const invalid = validateOpsStatusAgainstJob(parsed, job);
+    if (invalid) return { rejected: invalid };
+    return { job: this.ingestStatus(status) };
   }
 
   async progressToday(evidence: EvidenceMap = {}): Promise<DispatchSummary> {
@@ -256,14 +298,9 @@ export class DispatchEngine {
         job.status = posted.ok ? "AWAITING_EXTERNAL" : "BLOCKED";
         job.resultSummary = posted.detail;
       } else if (step.executor === "Cursor") {
-        const result = await this.cursor.dispatch(job);
-        job.status = result.status;
-        job.resultSummary = result.detail;
-        job.externalId = result.externalId;
+        this.applyWorker(job, await this.cursor.dispatch(job));
       } else if (step.executor === "ChatGPT") {
-        const result = await this.chatgpt.dispatch(job);
-        job.status = result.status;
-        job.resultSummary = result.detail;
+        this.applyWorker(job, await this.chatgpt.dispatch(job));
       } else {
         job.status = "COMPLETED";
         job.resultSummary = `${step.boundedAction} inspected via Control Plane dry-run. External write: 0.`;
@@ -286,8 +323,9 @@ export class DispatchEngine {
       `Progress everything that can be progressed today — trusted mode ${mode}.`,
       `Progressed: ${buckets.progressed.length}. Still running: ${buckets.stillRunning.length}. Awaiting external: ${buckets.awaitingExternal.length}. Blocked: ${buckets.blocked.length}. Founder required: ${buckets.founderRequired.length}.`,
       "Linked bounded sub-events share this correlation id. Founder-gated work was not dispatched.",
-      "Cursor and ChatGPT stay NOT_CONNECTED until their real connectors are configured. No unauthorized writes.",
+      "Cursor and ChatGPT stay NOT_CONNECTED until their real connectors are configured. Unauthorized business writes: 0.",
     ].join(" ");
+    const authorisedGovernedDispatchCount = jobs.filter((item) => Boolean(item.externalId)).length;
     return {
       correlationId,
       mode,
@@ -296,7 +334,58 @@ export class DispatchEngine {
       decomposition,
       slackPosts: this.slack instanceof MemorySlackTransport ? this.slack.posts.length : 0,
       unauthorizedWrites: 0,
+      authorisedGovernedDispatchCount,
     };
+  }
+
+  async refresh(): Promise<RefreshResult> {
+    const current = this.store.load().jobs;
+    const slack = await this.slack.collect(current);
+    const rejected = [...slack.rejected];
+    for (const status of slack.statuses) {
+      const result = this.ingestStatusResult(status);
+      if (result.rejected) rejected.push({ detail: status.event_id, reason: result.rejected });
+    }
+    for (const job of this.store.load().jobs.filter((item) => item.status === "AWAITING_EXTERNAL")) {
+      if (job.executor === "Cursor") this.applyPersisted(job, await this.cursor.status(job));
+      if (job.executor === "ChatGPT") this.applyPersisted(job, await this.chatgpt.status(job));
+    }
+    const jobs = this.store.load().jobs;
+    return {
+      collected: slack.statuses.length,
+      rejected,
+      jobs,
+      unauthorizedBusinessWrites: 0,
+      authorisedGovernedDispatchCount: jobs.filter((item) => Boolean(item.externalId)).length,
+    };
+  }
+
+  writeScope(): "none" | "governed_dispatch_only" {
+    const live =
+      (this.slack instanceof LiveSlackTransport && this.slack.configured) ||
+      this.cursor.configured ||
+      this.chatgpt.configured;
+    return live ? "governed_dispatch_only" : "none";
+  }
+
+  authorisedGovernedDispatchCount(): number {
+    return this.store.load().jobs.filter((item) => Boolean(item.externalId)).length;
+  }
+
+  private applyWorker(job: StoredJob, result: WorkerResult): void {
+    job.status = result.status;
+    job.resultSummary = result.detail;
+    job.externalId = result.externalId;
+    job.runId = result.runId;
+    job.model = result.model;
+    job.tests = result.tests ?? [];
+    job.blockers = result.blockers ?? [];
+  }
+
+  private applyPersisted(job: StoredJob, result: WorkerResult): void {
+    this.applyWorker(job, result);
+    job.updatedAt = new Date().toISOString();
+    this.persist(job, job.correlationId);
   }
 
   private persist(job: StoredJob, correlationId: string): void {

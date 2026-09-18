@@ -9,7 +9,8 @@ function badge(status) {
 }
 async function api(path, init) {
     const response = await fetch(path, {
-        credentials: "include",
+        credentials: "same-origin",
+        mode: "same-origin",
         ...init,
         headers: {
             "content-type": "application/json",
@@ -48,7 +49,7 @@ function render(snap) {
         .join("");
     document.querySelector("#actions").innerHTML = snap.actions
         .map((action) => `
-      <article class="card">
+      <article class="card" data-detail="action/${escape(action.id)}">
         <h3>${escape(action._pref?.icon ?? "◆")} ${escape(action.title)}</h3>
         <p>${escape(action.owner)} · ${escape(action.system)}</p>
         <p>${escape(action._pref?.description ?? action.success)}</p>
@@ -79,10 +80,10 @@ function render(snap) {
     document.querySelector("#activity").innerHTML = snap.activity
         .map((item) => `<article class="row" data-detail="activity/${item.id}"><h3>${escape(item.title)}</h3><p>${badge(item.status)} · ${escape(item.owner)}</p><p>${escape(item.summary)}</p></article>`)
         .join("");
-    const connectors = (snap.evidence ?? []).map((item) => `<article class="card lane ${item.freshness}" data-detail="action/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`);
+    const connectors = (snap.evidence ?? []).map((item) => `<article class="card lane ${item.freshness}" data-detail="connector/${item.id}"><h3>${escape(item.source)}</h3><p>${badge(item.freshness)}</p><p>${escape(item.detail)}</p><p>${escape(item.setupRequirement)}</p></article>`);
     document.querySelector("#status").innerHTML = connectors.join("");
     const usage = snap.usage;
-    document.querySelector("#usage").innerHTML = `<article class="row"><p>Jobs ${usage.jobs} · ${escape(usage.model)} · ${usage.runtimeMs}ms · retries ${usage.retries}</p><p>Cost: unknown (${usage.costStatus}), never $0.00.</p><p>${escape(usage.note)}</p></article>`;
+    document.querySelector("#usage").innerHTML = `<article class="row"><p>Jobs ${usage.jobs} · ${escape(usage.model)} · ${usage.runtimeMs}ms · retries ${usage.retries}</p><p>Unauthorized business writes: ${snap.unauthorizedBusinessWrites ?? 0}. Authorised governed dispatch: ${snap.authorisedGovernedDispatchCount ?? 0}. Write scope: ${escape(snap.writeScope ?? "none")}.</p><p>Cost: unknown (${usage.costStatus}), never $0.00.</p><p>${escape(usage.note)}</p></article>`;
     bind(snap);
 }
 function bind(snap) {
@@ -172,6 +173,18 @@ document.querySelector("#command-form")?.addEventListener("submit", (event) => {
     })
         .then(async (result) => {
         document.querySelector("#result").textContent = `${result.founderFriendlySummary}\n\n${result.correlationId ?? ""} ${result.mode}`;
+        await refresh();
+    })
+        .catch((error) => {
+        document.querySelector("#result").textContent =
+            error instanceof Error ? error.message : String(error);
+    });
+});
+document.querySelector("#refresh-jobs")?.addEventListener("click", () => {
+    void api("/api/jobs/refresh", { method: "POST", body: "{}" })
+        .then(async (result) => {
+        document.querySelector("#result").textContent =
+            `Collected ${result.collected} worker result(s). Rejected ${result.rejected.length}. Unauthorized business writes: ${result.unauthorizedBusinessWrites}. Authorised governed dispatch: ${result.authorisedGovernedDispatchCount}.`;
         await refresh();
     })
         .catch((error) => {

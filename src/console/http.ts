@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
-import { extname, join, normalize, resolve } from "node:path";
+import { extname, join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { repoRoot } from "../paths.js";
 import { assertNoSensitivePayload, forbiddenKeys } from "../sensitive.js";
@@ -88,9 +88,11 @@ function publicDir(): string {
 }
 
 function safeStatic(urlPath: string): string | undefined {
-  const relative = urlPath === "/" ? "index.html" : urlPath.replace(/^\//, "");
-  const resolved = normalize(join(publicDir(), relative));
-  if (!resolved.startsWith(publicDir())) return undefined;
+  const relative = urlPath === "/" ? "index.html" : urlPath.replace(/^\/+/, "");
+  if (relative.includes("\0") || relative.split(/[\\/]/).includes("..")) return undefined;
+  const root = resolve(publicDir()) + sep;
+  const resolved = resolve(publicDir(), relative);
+  if (!resolved.startsWith(root)) return undefined;
   if (!existsSync(resolved)) return undefined;
   return resolved;
 }
@@ -106,7 +108,23 @@ export function createDefaultRuntime(service?: ConsoleService) {
       : new MemorySlackTransport();
   const dispatch =
     service?.dispatch ??
-    new DispatchEngine(store, permissions, slack, new CursorDispatch(env.cursorToken), new ChatGptDispatch(env.chatgptDispatchEnabled, env.openaiKey), collectEvidence(env));
+    new DispatchEngine(
+      store,
+      permissions,
+      slack,
+      new CursorDispatch({
+        token: env.cursorToken,
+        allowRepo: env.cursorAllowRepo,
+        startingRef: env.cursorStartingRef,
+        requestedModel: env.cursorModel,
+      }),
+      new ChatGptDispatch({
+        enabled: env.chatgptDispatchEnabled,
+        apiKey: env.openaiKey,
+        model: env.openaiModel,
+      }),
+      collectEvidence(env),
+    );
   const resolved = service ?? new ConsoleService(permissions, { store, dispatch, evidence: collectEvidence(env) });
   return { auth, service: resolved, secureCookies: false };
 }
@@ -165,7 +183,16 @@ async function api(
   res: ServerResponse,
 ): Promise<void> {
   if (method === "GET" && path === "/api/health") {
-    send(res, 200, { ok: true, mode: service.mode(), dryRun: true, externalWrites: 0, bind: "private" });
+    const writeScope = service.dispatch.writeScope();
+    send(res, 200, {
+      ok: true,
+      mode: service.mode(),
+      dryRun: writeScope === "none",
+      writeScope,
+      unauthorizedBusinessWrites: 0,
+      authorisedGovernedDispatchCount: service.dispatch.authorisedGovernedDispatchCount(),
+      bind: "private",
+    });
     return;
   }
 
@@ -200,12 +227,6 @@ async function api(
     return;
   }
 
-  if (method === "POST" && path === "/api/logout") {
-    auth.logout(cookies.tr_session);
-    send(res, 200, { ok: true }, undefined, { "set-cookie": clearCookies(secureCookies) });
-    return;
-  }
-
   if (method === "POST" && path === "/api/inbox/approve-all") {
     send(res, 404, { ok: false, reason: "approve-all does not exist" });
     return;
@@ -220,6 +241,26 @@ async function api(
     }
     if (!auth.assertCsrf(session, req.headers["x-csrf-token"] as string | undefined)) {
       send(res, 403, { ok: false, reason: "csrf rejected" });
+      return;
+    }
+    if (path === "/api/logout") {
+      auth.logout(cookies.tr_session);
+      send(res, 200, { ok: true }, undefined, { "set-cookie": clearCookies(secureCookies) });
+      return;
+    }
+    if (path === "/api/session/rotate") {
+      if (!cookies.tr_session) {
+        send(res, 401, { ok: false, reason: "founder authentication required" });
+        return;
+      }
+      const rotated = auth.rotate(cookies.tr_session);
+      if (!rotated.ok || !rotated.token || !rotated.session) {
+        send(res, rotated.status, { ok: false, reason: rotated.reason });
+        return;
+      }
+      send(res, 200, { ok: true, csrf: rotated.session.csrf, expiresAt: rotated.session.expiresAt }, undefined, {
+        "set-cookie": [sessionCookie(rotated.token, secureCookies), csrfCookie(rotated.session.csrf, secureCookies)],
+      });
       return;
     }
     const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
@@ -316,14 +357,23 @@ async function mutate(
     return;
   }
   if (path === "/api/ops-status") {
-    const job = service.dispatch.ingestStatus({
+    const result = service.dispatch.ingestStatusResult({
       kind: "OPS_STATUS",
       event_id: String(safe.event_id ?? ""),
       correlation_id: String(safe.correlation_id ?? ""),
       status: (safe.status as "COMPLETED") ?? "AWAITING_EXTERNAL",
       detail: String(safe.detail ?? ""),
+      executor: safe.executor ? String(safe.executor) : undefined,
     });
-    send(res, job ? 200 : 404, { ok: Boolean(job), job });
+    if (result.rejected) {
+      send(res, 400, { ok: false, reason: result.rejected, job: undefined });
+      return;
+    }
+    send(res, result.job ? 200 : 404, { ok: Boolean(result.job), job: result.job });
+    return;
+  }
+  if (path === "/api/jobs/refresh") {
+    send(res, 200, await service.refreshJobs());
     return;
   }
   const actionMatch = path.match(/^\/api\/actions\/([a-z0-9_]+)$/);
@@ -392,8 +442,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     cfg.store,
     loadPermissions(),
     slack,
-    new CursorDispatch(env.cursorToken),
-    new ChatGptDispatch(env.chatgptDispatchEnabled, env.openaiKey),
+    new CursorDispatch({
+      token: env.cursorToken,
+      allowRepo: env.cursorAllowRepo,
+      startingRef: env.cursorStartingRef,
+      requestedModel: env.cursorModel,
+    }),
+    new ChatGptDispatch({
+      enabled: env.chatgptDispatchEnabled,
+      apiKey: env.openaiKey,
+      model: env.openaiModel,
+    }),
     collectEvidence(env),
   );
   const service = new ConsoleService(loadPermissions(), {

@@ -21,15 +21,21 @@ export interface EvidenceEnv {
   demoFixtures: boolean;
   driveKey?: string;
   crmKey?: string;
+  crmUrl?: string;
   metricoolKey?: string;
+  metricoolUrl?: string;
   stripeKey?: string;
   supersetKey?: string;
+  supersetUrl?: string;
   slackToken?: string;
   slackChannel?: string;
   slackDispatchEnabled?: boolean;
   cursorToken?: string;
   cursorAllowRepo?: string;
+  cursorStartingRef?: string;
+  cursorModel?: string;
   openaiKey?: string;
+  openaiModel?: string;
   chatgptDispatchEnabled?: boolean;
   githubToken?: string;
 }
@@ -39,15 +45,21 @@ export function readEvidenceEnv(env: NodeJS.ProcessEnv = process.env): EvidenceE
     demoFixtures: env.FOUNDER_CONSOLE_DEMO_FIXTURES === "1" && env.FOUNDER_CONSOLE_DEV_AUTH === "1",
     driveKey: env.TR_DRIVE_READONLY_TOKEN,
     crmKey: env.TR_CRM_READONLY_TOKEN,
+    crmUrl: env.TR_CRM_READONLY_URL,
     metricoolKey: env.TR_METRICOOL_READONLY_TOKEN,
+    metricoolUrl: env.TR_METRICOOL_READONLY_URL,
     stripeKey: env.TR_STRIPE_READONLY_TOKEN,
     supersetKey: env.TR_SUPERSET_READONLY_TOKEN,
+    supersetUrl: env.TR_SUPERSET_READONLY_URL,
     slackToken: env.SLACK_BOT_TOKEN,
     slackChannel: env.SLACK_AI_OPS_CHANNEL,
     slackDispatchEnabled: env.SLACK_DISPATCH_ENABLED === "1",
     cursorToken: env.CURSOR_CLOUD_AGENT_TOKEN,
     cursorAllowRepo: env.CURSOR_ALLOW_REPO ?? "TRCoach/TRCoaching",
+    cursorStartingRef: env.CURSOR_STARTING_REF ?? "main",
+    cursorModel: env.CURSOR_MODEL,
     openaiKey: env.OPENAI_API_KEY,
+    openaiModel: env.OPENAI_MODEL,
     chatgptDispatchEnabled: env.FOUNDER_CHATGPT_DISPATCH === "1",
     githubToken: env.GITHUB_READONLY_TOKEN,
   };
@@ -228,16 +240,16 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
           lastVerified: null,
           freshness: "UNKNOWN",
           evidenceRef: "cursor_job",
-          detail: "A Cursor token is present, but this repo has no stable public Cloud Agent dispatch API. Status stays UNKNOWN until that connector exists.",
+          detail: "A server-only Cursor token is present. Public-beta v1 is wired (POST /v1/agents, GET run). Status stays UNKNOWN until a verified run read-back.",
           setupRequirement:
-            "CURSOR_CLOUD_AGENT_TOKEN plus CURSOR_ALLOW_REPO=TRCoach/TRCoaching and a documented Cloud Agent dispatch endpoint. Until Cursor publishes that API, the adapter stays NOT_CONNECTED/UNKNOWN and never fakes success.",
+            "CURSOR_CLOUD_AGENT_TOKEN (server-only), CURSOR_ALLOW_REPO=TRCoach/TRCoaching exactly, CURSOR_STARTING_REF, optional CURSOR_MODEL from GET /v1/models, autoCreatePR=true. Never fake COMPLETED.",
           credentialsExposed: false,
           demoFixture: false,
         }
       : disconnected(
           "cursor",
           "Cursor Cloud",
-          "No stable Cursor Cloud Agent HTTP dispatch API is wired in this repo. Required later: server-only token, repo/branch allowlist TRCoach/TRCoaching, bounded templates, idempotency. Do not fake COMPLETED.",
+          "Cursor Cloud Agents API v1 is real (public beta). Set server-only CURSOR_CLOUD_AGENT_TOKEN, exact CURSOR_ALLOW_REPO=TRCoach/TRCoaching, CURSOR_STARTING_REF. Optional CURSOR_MODEL from GET /v1/models. Default remains NOT_CONNECTED.",
         ),
   );
 
@@ -251,14 +263,15 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
           freshness: "UNKNOWN",
           evidenceRef: "chatgpt_review",
           detail: "OpenAI dispatch flag is on. Live calls are still not made unless an explicit dispatch job is approved. Cost is unknown until billed.",
-          setupRequirement: "FOUNDER_CHATGPT_DISPATCH=1 and OPENAI_API_KEY. Founder must approve spend. Default remains NOT_CONNECTED.",
+          setupRequirement:
+            "FOUNDER_CHATGPT_DISPATCH=1 plus OPENAI_API_KEY and OPENAI_MODEL. Spend stays disabled by default. Review OpenAI response retention/data-control before enabling.",
           credentialsExposed: false,
           demoFixture: false,
         }
       : disconnected(
           "chatgpt",
           "ChatGPT",
-          "Set FOUNDER_CHATGPT_DISPATCH=1 and OPENAI_API_KEY only after founder spend approval. Until then the worker/manager adapter is NOT_CONNECTED.",
+          "Set FOUNDER_CHATGPT_DISPATCH=1 plus OPENAI_API_KEY and OPENAI_MODEL only after founder spend approval and a data-control review. Until then the adapter is NOT_CONNECTED.",
         ),
   );
 

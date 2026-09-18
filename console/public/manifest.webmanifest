@@ -4,8 +4,8 @@
   "description": "Authenticated founder console. TEST mode. No anonymous access.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f6f1e8",
-  "theme_color": "#1b2a4a",
+  "background_color": "#0b0d10",
+  "theme_color": "#0b0d10",
   "lang": "en",
   "icons": [
     {

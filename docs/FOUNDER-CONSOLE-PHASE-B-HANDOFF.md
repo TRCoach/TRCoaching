@@ -12,9 +12,9 @@ For later Drive continuity log and `#ai-ops` update.
 
 ## What stays NOT_CONNECTED
 
-- Drive/CRM/Metricool/Stripe/Superset/GitHub live reads until least-privilege tokens are issued  
-- Cursor Cloud Agent dispatch (no stable public API wired)  
-- ChatGPT/OpenAI dispatch (spend not approved)  
+- Drive/CRM/Metricool/Stripe/Superset/GitHub remain NOT_CONNECTED/UNKNOWN without server-only least-privilege tokens. Live probes (when configured) discard response bodies and persist only timestamps plus evidence labels.
+- Cursor Cloud Agents API v1 adapter is wired but NOT_CONNECTED without `CURSOR_CLOUD_AGENT_TOKEN`
+- ChatGPT/OpenAI Responses adapter is wired but spend stays disabled without `FOUNDER_CHATGPT_DISPATCH=1` + `OPENAI_API_KEY` + `OPENAI_MODEL`
 - Slack live posts (requires founder-approved bot + #ai-ops allowlist)
 
 ## Do not do next without founder approval

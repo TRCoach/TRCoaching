@@ -90,6 +90,33 @@ describe("founder console phase B", () => {
     const restarted = new ConsoleService(loadPermissions(), { store: new JsonFileStore(path) });
     assert.equal(restarted.preferences()[0]?.displayName, "Daily pulse");
     assert.equal(forbiddenKeys(restarted.store.load()).length, 0);
+    store.save({
+      version: 1,
+      sessions: [],
+      preferences: restarted.store.load().preferences,
+      jobs: [
+        {
+          id: "evt_legacy",
+          correlationId: "corr_legacy",
+          title: "legacy",
+          owner: "Cursor",
+          executor: "Cursor",
+          status: "AWAITING_EXTERNAL",
+          boundedAction: "bounded_qa_report",
+          evidenceRefs: ["TRCoach/TRCoaching"],
+          resultSummary: "legacy",
+          createdAt: "2026-09-18T00:00:00.000Z",
+          updatedAt: "2026-09-18T00:00:00.000Z",
+          founderGate: false,
+        },
+      ],
+      audits: [],
+    } as never);
+    const migrated = new JsonFileStore(path).load();
+    assert.equal(migrated.version, 2);
+    assert.deepEqual(migrated.jobs[0]?.tests, []);
+    assert.deepEqual(migrated.jobs[0]?.blockers, []);
+    assert.deepEqual(migrated.probes, []);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -177,5 +204,284 @@ describe("founder console phase B HTTP security", () => {
     const leaked = JSON.stringify(body);
     assert.equal(/sk_live|api_key|password/.test(leaked), false);
     assert.equal(forbiddenKeys(body).length, 0);
+  });
+});
+
+describe("founder console phase B QA delta", () => {
+  it("creates and reads Cursor v1 agents and reconciles 409 agent_id_conflict", async () => {
+    const calls: Array<{ method: string; url: string; body?: unknown }> = [];
+    const agentId = "bc-11111111-1111-1111-1111-111111111111";
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+      calls.push({ method, url, body });
+      if (method === "GET" && url.endsWith("/v1/models")) {
+        return new Response(JSON.stringify({ items: [{ id: "composer-2", aliases: ["composer"] }] }), { status: 200 });
+      }
+      if (method === "POST" && url.endsWith("/v1/agents") && calls.filter((item) => item.method === "POST").length === 1) {
+        assert.equal(body.autoCreatePR, true);
+        assert.deepEqual(body.repos, [{ url: "https://github.com/TRCoach/TRCoaching", startingRef: "main" }]);
+        assert.match(body.agentId, /^bc-[0-9a-f-]{36}$/);
+        assert.equal(body.model.id, "composer-2");
+        assert.match(body.prompt.text, /TRCoach\/TRCoaching/);
+        return new Response(
+          JSON.stringify({
+            agent: { id: body.agentId, latestRunId: "run-created" },
+            run: { id: "run-created", status: "CREATING" },
+          }),
+          { status: 201 },
+        );
+      }
+      if (method === "POST" && url.endsWith("/v1/agents")) {
+        return new Response(JSON.stringify({ error: { code: "agent_id_conflict" } }), { status: 409 });
+      }
+      if (method === "GET" && /\/v1\/agents\/bc-/.test(url) && !url.includes("/runs/")) {
+        return new Response(JSON.stringify({ id: agentId, latestRunId: "run-existing" }), { status: 200 });
+      }
+      if (url.endsWith("/runs/run-created")) {
+        return new Response(JSON.stringify({ status: "FINISHED", result: "QA report", tests: ["validate"] }), { status: 200 });
+      }
+      if (url.endsWith("/runs/run-existing")) {
+        return new Response(JSON.stringify({ status: "RUNNING" }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    };
+    const { CursorDispatch } = await import("../src/console/cursor-v1.ts");
+    const cursor = new CursorDispatch({
+      token: "server-only-test-token",
+      allowRepo: "TRCoach/TRCoaching",
+      startingRef: "main",
+      requestedModel: "composer",
+      fetchImpl,
+    });
+    const job = {
+      id: "evt_cursor",
+      correlationId: "corr_cursor",
+      title: "qa",
+      owner: "Cursor",
+      executor: "Cursor",
+      status: "RUNNING" as const,
+      boundedAction: "bounded_qa_report",
+      evidenceRefs: ["TRCoach/TRCoaching"],
+      resultSummary: "",
+      createdAt: "2026-09-18T00:00:00.000Z",
+      updatedAt: "2026-09-18T00:00:00.000Z",
+      founderGate: false,
+    };
+    const created = await cursor.dispatch(job);
+    assert.equal(created.status, "AWAITING_EXTERNAL");
+    assert.ok(created.externalId);
+    assert.equal(created.runId, "run-created");
+    assert.equal(created.model, "composer-2");
+    const verified = await cursor.status({ ...job, externalId: created.externalId, runId: created.runId, model: created.model });
+    assert.equal(verified.status, "COMPLETED");
+    assert.deepEqual(verified.tests, ["validate"]);
+    const conflicted = await cursor.dispatch(job);
+    assert.equal(conflicted.status, "AWAITING_EXTERNAL");
+    assert.match(conflicted.detail, /409 agent_id_conflict/);
+    assert.equal(conflicted.runId, "run-existing");
+    assert.ok(calls.some((item) => item.method === "GET" && item.url.includes("/v1/agents/") && !item.url.includes("/runs/")));
+  });
+
+  it("keeps OpenAI spend gated and posts the Responses background contract", async () => {
+    const calls: Array<{ url: string; body?: Record<string, unknown> }> = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined;
+      calls.push({ url, body });
+      if (url.endsWith("/v1/responses") && init?.method === "POST") {
+        return new Response(JSON.stringify({ id: "resp_1", status: "queued" }), { status: 200 });
+      }
+      if (url.endsWith("/v1/responses/resp_1")) {
+        return new Response(JSON.stringify({ id: "resp_1", status: "completed", output_text: "review ok" }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    };
+    const { ChatGptDispatch } = await import("../src/console/openai-responses.ts");
+    const gated = new ChatGptDispatch({
+      enabled: false,
+      apiKey: "sk-test",
+      model: "gpt-4.1-mini",
+      fetchImpl,
+    });
+    const job = {
+      id: "evt_gpt",
+      correlationId: "corr_gpt",
+      title: "qa",
+      owner: "ChatGPT",
+      executor: "ChatGPT",
+      status: "RUNNING" as const,
+      boundedAction: "independent_qa_review",
+      evidenceRefs: ["qa_report_ref"],
+      resultSummary: "",
+      createdAt: "2026-09-18T00:00:00.000Z",
+      updatedAt: "2026-09-18T00:00:00.000Z",
+      founderGate: false,
+    };
+    const blocked = await gated.dispatch(job);
+    assert.equal(blocked.status, "BLOCKED");
+    assert.match(blocked.detail, /NOT_CONNECTED/);
+    assert.equal(calls.length, 0);
+    const live = new ChatGptDispatch({
+      enabled: true,
+      apiKey: "sk-test",
+      model: "gpt-4.1-mini",
+      fetchImpl,
+    });
+    const created = await live.dispatch(job);
+    assert.equal(created.status, "AWAITING_EXTERNAL");
+    assert.equal(created.externalId, "resp_1");
+    assert.equal(calls[0]?.body?.background, true);
+    assert.equal(calls[0]?.body?.model, "gpt-4.1-mini");
+    const input = JSON.parse(String(calls[0]?.body?.input ?? "{}")) as Record<string, unknown>;
+    assert.equal(input.event_id, "evt_gpt");
+    assert.equal(JSON.stringify(input).includes("@"), false);
+    const verified = await live.status({ ...job, externalId: "resp_1" });
+    assert.equal(verified.status, "COMPLETED");
+  });
+
+  it("collects correlated Slack OPS_STATUS and rejects wrong correlation, status, executor, and oversized detail", async () => {
+    const slack = new MemorySlackTransport();
+    const store = new MemoryStore();
+    const engine = DispatchEngine.forTests(store, loadPermissions(), slack);
+    const summary = await engine.progressToday();
+    const slackJob = store.load().jobs.find((item) => item.executor === "Slack");
+    assert.ok(slackJob);
+    slack.inbox.push(
+      [
+        "Grok_Alex: OPS_STATUS",
+        `event_id=${slackJob!.id}`,
+        `correlation_id=${summary.correlationId}`,
+        "status=COMPLETED",
+        "executor=Slack",
+        "detail=Alex acknowledged",
+      ].join("\n"),
+    );
+    slack.inbox.push(
+      [
+        "Grok_Alex: OPS_STATUS",
+        `event_id=${slackJob!.id}`,
+        "correlation_id=corr_wrong",
+        "status=COMPLETED",
+        "executor=Slack",
+        "detail=nope",
+      ].join("\n"),
+    );
+    slack.inbox.push(
+      [
+        "Grok_Alex: OPS_STATUS",
+        `event_id=${slackJob!.id}`,
+        `correlation_id=${summary.correlationId}`,
+        "status=DONE",
+        "executor=Slack",
+        "detail=nope",
+      ].join("\n"),
+    );
+    slack.inbox.push(
+      [
+        "Grok_Alex: OPS_STATUS",
+        `event_id=${slackJob!.id}`,
+        `correlation_id=${summary.correlationId}`,
+        "status=COMPLETED",
+        "executor=Cursor",
+        "detail=nope",
+      ].join("\n"),
+    );
+    slack.inbox.push(
+      [
+        "Grok_Alex: OPS_STATUS",
+        `event_id=${slackJob!.id}`,
+        `correlation_id=${summary.correlationId}`,
+        "status=COMPLETED",
+        "executor=Slack",
+        `detail=${"x".repeat(500)}`,
+      ].join("\n"),
+    );
+    const refreshed = await engine.refresh();
+    assert.equal(store.load().jobs.find((item) => item.id === slackJob!.id)?.status, "COMPLETED");
+    assert.ok(refreshed.rejected.some((item) => item.reason === "wrong correlation"));
+    assert.ok(refreshed.rejected.some((item) => item.reason === "unknown status"));
+    assert.ok(refreshed.rejected.some((item) => item.reason === "wrong executor"));
+    assert.ok(refreshed.rejected.some((item) => item.reason === "oversized detail"));
+    assert.equal(refreshed.unauthorizedBusinessWrites, 0);
+  });
+
+  it("discards live probe response bodies and persists only labels", async () => {
+    let cancelled = 0;
+    const fetchImpl: typeof fetch = async () => {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(JSON.stringify({ email: "hidden@example.com", secret: "nope" })));
+          controller.close();
+        },
+        cancel() {
+          cancelled += 1;
+        },
+      });
+      return new Response(stream, { status: 200 });
+    };
+    const { probeConnectors } = await import("../src/console/probes.ts");
+    const probes = await probeConnectors(
+      {
+        demoFixtures: false,
+        driveKey: "drive",
+        crmKey: "crm",
+        crmUrl: "https://crm.example.test/health",
+        metricoolKey: "metricool",
+        metricoolUrl: "https://metricool.example.test/health",
+        stripeKey: "stripe",
+        supersetKey: "superset",
+        supersetUrl: "https://superset.example.test/health",
+        slackToken: "slack",
+        cursorToken: "cursor",
+        githubToken: "github",
+      },
+      fetchImpl,
+    );
+    assert.ok(probes.every((item) => item.bodyDiscarded));
+    assert.ok(cancelled >= 8);
+    assert.ok(probes.every((item) => item.evidenceLabel === "auth_or_metadata_probe_http_ok"));
+    assert.equal(JSON.stringify(probes).includes("hidden@example.com"), false);
+    assert.equal(JSON.stringify(probes).includes("nope"), false);
+    const missing = await probeConnectors({ demoFixtures: false }, fetchImpl);
+    assert.ok(missing.every((item) => item.evidenceLabel === "NOT_CONNECTED"));
+  });
+
+  it("protects logout and session rotation with auth and CSRF", async () => {
+    const started = await startConsoleServer({ port: 0 });
+    try {
+      const anon = await fetch(`${started.url}/api/logout`, { method: "POST", body: "{}" });
+      assert.equal(anon.status, 401);
+      const session = await loginFounder(started.url);
+      const csrfFail = await fetch(`${started.url}/api/logout`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: session.cookie },
+        body: "{}",
+      });
+      assert.equal(csrfFail.status, 403);
+      const rotated = await fetch(`${started.url}/api/session/rotate`, {
+        method: "POST",
+        headers: authHeaders(session),
+        body: "{}",
+      });
+      assert.equal(rotated.status, 200);
+      const rotatedBody = (await rotated.json()) as { csrf: string };
+      const rotatedCookie = rotated.headers.getSetCookie().map((part) => part.split(";")[0]).join("; ");
+      const stale = await fetch(`${started.url}/api/overview`, { headers: { cookie: session.cookie } });
+      assert.equal(stale.status, 401);
+      const ok = await fetch(`${started.url}/api/overview`, { headers: { cookie: rotatedCookie } });
+      assert.equal(ok.status, 200);
+      const logout = await fetch(`${started.url}/api/logout`, {
+        method: "POST",
+        headers: authHeaders({ cookie: rotatedCookie, csrf: rotatedBody.csrf }),
+        body: "{}",
+      });
+      assert.equal(logout.status, 200);
+      const after = await fetch(`${started.url}/api/overview`, { headers: { cookie: rotatedCookie } });
+      assert.equal(after.status, 401);
+    } finally {
+      started.server.close();
+    }
   });
 });
