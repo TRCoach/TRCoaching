@@ -544,6 +544,12 @@ describe("founder console Worker-safe dispatch and Slack transport", () => {
     assert.equal(posts, 2);
   });
 
+  it("does not bind Worker fetch as a method this", () => {
+    const source = readFileSync("src/console/dispatch.ts", "utf8");
+    assert.match(source, /globalThis\.fetch/);
+    assert.equal(/private fetchImpl: typeof fetch = fetch/.test(source), false);
+  });
+
   it("returns JSON for Worker command and Slack rehearsal without a worker exception", async () => {
     const hash = FounderAuth.hashPasswordPbkdf2("phase-c-test-password", "c-salt");
     const env = {

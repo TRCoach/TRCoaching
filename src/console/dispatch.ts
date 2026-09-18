@@ -66,13 +66,23 @@ export class MemorySlackTransport implements SlackTransport {
   }
 }
 
+function slackErrorDetail(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : fallback;
+  return message.replace(/xoxb-[A-Za-z0-9-]+/g, "[redacted]").replace(/\s+/g, " ").slice(0, 160);
+}
+
 export class LiveSlackTransport implements SlackTransport {
+  private readonly fetchImpl: typeof fetch;
   constructor(
-    private token: string | undefined,
+    token: string | undefined,
     private channel: string | undefined,
     private enabled: boolean,
-    private fetchImpl: typeof fetch = fetch,
-  ) {}
+    fetchImpl?: typeof fetch,
+  ) {
+    this.token = token?.trim() || undefined;
+    this.fetchImpl = fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
+  }
+  private token: string | undefined;
   get configured(): boolean {
     return Boolean(this.enabled && this.token && this.channel && /^#?ai-ops$|^C[A-Z0-9]+$/.test(this.channel));
   }
@@ -99,8 +109,8 @@ export class LiveSlackTransport implements SlackTransport {
         return { ok: false, detail: `Slack API: not_in_channel (${joined.detail})` };
       }
       return posted;
-    } catch {
-      return { ok: false, detail: "Slack API: request failed" };
+    } catch (error) {
+      return { ok: false, detail: `Slack API: ${slackErrorDetail(error, "request failed")}` };
     }
   }
   private async postMessage(text: string): Promise<{ ok: boolean; externalId?: string; detail: string; error?: string }> {
@@ -144,8 +154,8 @@ export class LiveSlackTransport implements SlackTransport {
       }
       if (!body.ok) return { ok: false, detail: body.error ?? "join failed" };
       return { ok: true, detail: "joined allowlisted channel" };
-    } catch {
-      return { ok: false, detail: "join request failed" };
+    } catch (error) {
+      return { ok: false, detail: slackErrorDetail(error, "join request failed") };
     }
   }
   async authTest(): Promise<{ ok: boolean; detail: string }> {
@@ -167,8 +177,8 @@ export class LiveSlackTransport implements SlackTransport {
       }
       if (!body.ok) return { ok: false, detail: body.error ?? "auth.test failed" };
       return { ok: true, detail: "auth.test ok" };
-    } catch {
-      return { ok: false, detail: "auth.test request failed" };
+    } catch (error) {
+      return { ok: false, detail: slackErrorDetail(error, "auth.test request failed") };
     }
   }
   async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
@@ -192,8 +202,8 @@ export class LiveSlackTransport implements SlackTransport {
         (body.messages ?? []).map((item) => item.text ?? ""),
         jobs,
       );
-    } catch {
-      return { statuses: [], rejected: [{ detail: "", reason: "Slack history: request failed" }] };
+    } catch (error) {
+      return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${slackErrorDetail(error, "request failed")}` }] };
     }
   }
 }
