@@ -35,6 +35,7 @@ export interface EvidenceEnv {
   slackToken?: string;
   slackChannel?: string;
   slackDispatchEnabled?: boolean;
+  slackApprovedStatusSenderIds?: string;
   cursorToken?: string;
   cursorAllowRepo?: string;
   cursorStartingRef?: string;
@@ -60,6 +61,7 @@ export function readEvidenceEnv(env: NodeJS.ProcessEnv = process.env): EvidenceE
     slackToken: env.SLACK_BOT_TOKEN,
     slackChannel: env.SLACK_AI_OPS_CHANNEL,
     slackDispatchEnabled: env.SLACK_DISPATCH_ENABLED === "1",
+    slackApprovedStatusSenderIds: env.SLACK_APPROVED_STATUS_SENDER_IDS,
     cursorToken: env.CURSOR_CLOUD_AGENT_TOKEN,
     cursorAllowRepo: env.CURSOR_ALLOW_REPO ?? "TRCoach/TRCoaching",
     cursorStartingRef: env.CURSOR_STARTING_REF ?? "main",

@@ -73,14 +73,19 @@ function slackErrorDetail(error: unknown, fallback: string): string {
 
 export class LiveSlackTransport implements SlackTransport {
   private readonly fetchImpl: typeof fetch;
+  private readonly approvedStatusSenderIds: string;
   constructor(
     token: string | undefined,
     private channel: string | undefined,
     private enabled: boolean,
+    approvedStatusSenderIdsOrFetch: string | typeof fetch = "",
     fetchImpl?: typeof fetch,
   ) {
     this.token = token?.trim() || undefined;
-    this.fetchImpl = fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
+    this.approvedStatusSenderIds = typeof approvedStatusSenderIdsOrFetch === "string" ? approvedStatusSenderIdsOrFetch : "";
+    this.fetchImpl =
+      (typeof approvedStatusSenderIdsOrFetch === "function" ? approvedStatusSenderIdsOrFetch : fetchImpl) ??
+      ((input, init) => globalThis.fetch(input, init));
   }
   private token: string | undefined;
   get configured(): boolean {
@@ -183,25 +188,60 @@ export class LiveSlackTransport implements SlackTransport {
   }
   async collect(jobs: StoredJob[]): Promise<SlackCollectResult> {
     if (!this.configured) return { statuses: [], rejected: [] };
+    const approved = new Set(this.approvedStatusSenderIds.split(",").map((item) => item.trim()).filter(Boolean));
+    if (!approved.size) {
+      return { statuses: [], rejected: [{ detail: "", reason: "OPS_STATUS ingestion disabled: no approved Slack sender IDs configured" }] };
+    }
     try {
       const response = await this.fetchImpl(
         `https://slack.com/api/conversations.history?channel=${encodeURIComponent(this.channel ?? "")}&limit=50`,
         { headers: { authorization: `Bearer ${this.token}` } },
       );
       const raw = await response.text();
-      let body: { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
+      type SlackMessage = { text?: string; user?: string; bot_id?: string; app_id?: string; ts?: string };
+      let body: { ok?: boolean; messages?: SlackMessage[]; error?: string };
       try {
-        body = JSON.parse(raw) as { ok?: boolean; messages?: Array<{ text?: string }>; error?: string };
+        body = JSON.parse(raw) as { ok?: boolean; messages?: SlackMessage[]; error?: string };
       } catch {
         return { statuses: [], rejected: [{ detail: "", reason: `Slack history: non-JSON ${response.status}` }] };
       }
       if (!body.ok) {
         return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${body.error ?? response.status}` }] };
       }
-      return collectOpsStatusMessages(
-        (body.messages ?? []).map((item) => item.text ?? ""),
-        jobs,
+      const replyParents = jobs
+        .filter((job) => job.executor === "Slack" && /^\d+\.\d+$/.test(job.externalId ?? ""))
+        .map((job) => job.externalId as string);
+      const replyPages = await Promise.all(
+        replyParents.map(async (ts) => {
+          const replyResponse = await this.fetchImpl(
+            `https://slack.com/api/conversations.replies?channel=${encodeURIComponent(this.channel ?? "")}&ts=${encodeURIComponent(ts)}&limit=50`,
+            { headers: { authorization: `Bearer ${this.token}` } },
+          );
+          const replyRaw = await replyResponse.text();
+          try {
+            const replyBody = JSON.parse(replyRaw) as { ok?: boolean; messages?: SlackMessage[] };
+            return replyBody.ok ? replyBody.messages ?? [] : [];
+          } catch {
+            return [];
+          }
+        }),
       );
+      const messages = [...(body.messages ?? []), ...replyPages.flat()];
+      const unique = new Map(messages.map((item) => [item.ts ?? `${item.user}:${item.text}`, item]));
+      const accepted: string[] = [];
+      const rejected: Array<{ detail: string; reason: string }> = [];
+      for (const message of unique.values()) {
+        const text = message.text ?? "";
+        if (!text.includes("OPS_STATUS")) continue;
+        const senderIds = [message.user, message.bot_id, message.app_id].filter(Boolean) as string[];
+        if (!senderIds.some((id) => approved.has(id))) {
+          rejected.push({ detail: text.slice(0, 80), reason: "OPS_STATUS sender is not allowlisted" });
+          continue;
+        }
+        accepted.push(text);
+      }
+      const parsed = collectOpsStatusMessages(accepted, jobs);
+      return { statuses: parsed.statuses, rejected: [...rejected, ...parsed.rejected] };
     } catch (error) {
       return { statuses: [], rejected: [{ detail: "", reason: `Slack history: ${slackErrorDetail(error, "request failed")}` }] };
     }
@@ -339,11 +379,30 @@ export class DispatchEngine {
 
   async progressToday(evidence: EvidenceMap = {}): Promise<DispatchSummary> {
     const mode = resolveMode(this.permissions);
-    const correlationId = newId("corr");
+    const decomposition = this.plan(mode, this.evidence);
+    void evidence;
+    return this.dispatchPlans(decomposition, "progress_everything_today", newId("corr"));
+  }
+
+  async dispatchPlans(
+    decomposition: SubEventPlan[],
+    parentAction: string,
+    correlationId = newId("corr"),
+  ): Promise<DispatchSummary> {
+    const mode = resolveMode(this.permissions);
     const due = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
-    const cards = this.evidence;
-    const decomposition = this.plan(mode, cards);
     const jobs: StoredJob[] = [];
+
+    this.store.exclusive((data) => {
+      if (!data.correlations.some((item) => item.id === correlationId)) {
+        data.correlations.unshift({
+          id: correlationId,
+          createdAt: new Date().toISOString(),
+          parentAction,
+          eventIds: decomposition.map((item) => item.id),
+        });
+      }
+    });
 
     for (const step of decomposition) {
       const job: StoredJob = {
@@ -399,7 +458,6 @@ export class DispatchEngine {
       jobs.push(job);
     }
 
-    void evidence;
     const buckets = {
       progressed: jobs.filter((item) => item.status === "COMPLETED"),
       stillRunning: jobs.filter((item) => item.status === "RUNNING" || item.status === "QUEUED"),
@@ -408,11 +466,12 @@ export class DispatchEngine {
       founderRequired: jobs.filter((item) => item.status === "FOUNDER_REQUIRED"),
       failed: jobs.filter((item) => item.status === "FAILED"),
     };
+    const actionLabel = parentAction.replaceAll("_", " ");
     const founderFriendlySummary = [
-      `Progress everything that can be progressed today — trusted mode ${mode}.`,
+      `${actionLabel.charAt(0).toUpperCase()}${actionLabel.slice(1)} — trusted mode ${mode}.`,
       `Progressed: ${buckets.progressed.length}. Still running: ${buckets.stillRunning.length}. Awaiting external: ${buckets.awaitingExternal.length}. Blocked: ${buckets.blocked.length}. Founder required: ${buckets.founderRequired.length}.`,
       "Linked bounded sub-events share this correlation id. Founder-gated work was not dispatched.",
-      "Cursor and ChatGPT stay NOT_CONNECTED until their real connectors are configured. Unauthorized business writes: 0.",
+      "Unavailable executors remain NOT_CONNECTED/BLOCKED; no completion is inferred. Unauthorized business writes: 0.",
     ].join(" ");
     const authorisedGovernedDispatchCount = jobs.filter((item) => Boolean(item.externalId)).length;
     return {

@@ -11,7 +11,7 @@ import { MemoryStore, type ActionPreference } from "./store.js";
 import { collectEvidence, readEvidenceEnv } from "./evidence.js";
 import { DispatchEngine, LiveSlackTransport, MemorySlackTransport, CursorDispatch, ChatGptDispatch } from "./dispatch.js";
 import type { EvidenceMap } from "../types.js";
-import type { DecisionAct } from "./types.js";
+import type { DecisionAct, LaneActionAct, LaneId } from "./types.js";
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -104,7 +104,7 @@ export function createDefaultRuntime(service?: ConsoleService) {
   const env = readEvidenceEnv();
   const slack =
     env.slackDispatchEnabled && env.slackToken
-      ? new LiveSlackTransport(env.slackToken, env.slackChannel, true)
+      ? new LiveSlackTransport(env.slackToken, env.slackChannel, true, env.slackApprovedStatusSenderIds)
       : new MemorySlackTransport();
   const dispatch =
     service?.dispatch ??
@@ -356,11 +356,7 @@ async function mutate(
   }
   if (path === "/api/command") {
     const text = typeof safe.text === "string" ? safe.text : "";
-    if (/progress everything that can be progressed today/i.test(text)) {
-      send(res, 200, await service.progressEverythingAsync());
-      return;
-    }
-    send(res, 200, service.runCommand(text, (safe.evidence as EvidenceMap | undefined) ?? {}));
+    send(res, 200, await service.runCommandAsync(text, (safe.evidence as EvidenceMap | undefined) ?? {}));
     return;
   }
   if (path === "/api/preferences") {
@@ -409,7 +405,18 @@ async function mutate(
       send(res, 200, await service.progressEverythingAsync());
       return;
     }
+    if (actionMatch[1] === "generate_next_weeks_marketing") {
+      send(res, 200, await service.prepareNextWeeksSocial());
+      return;
+    }
     send(res, 200, service.runAction(actionMatch[1], undefined, (safe.evidence as EvidenceMap | undefined) ?? {}));
+    return;
+  }
+  const laneMatch = path.match(/^\/api\/lanes\/([a-z_]+)\/([A-Za-z0-9_-]+)\/(request-evidence|add-instruction|retry|resolve|acknowledge)$/);
+  if (laneMatch?.[1] && laneMatch[2] && laneMatch[3]) {
+    const act = laneMatch[3].replaceAll("-", "_") as LaneActionAct;
+    const result = service.laneAction(laneMatch[1] as LaneId, laneMatch[2], act, String(safe.comment ?? ""));
+    send(res, result.ok ? 200 : 409, result);
     return;
   }
   const decideMatch = path.match(/^\/api\/inbox\/([a-z0-9_]+)\/(approve|reject|request-evidence)$/);
@@ -464,7 +471,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
   const { loadRuntimeConfig } = await import("./config.js");
   const cfg = loadRuntimeConfig();
   const env = readEvidenceEnv();
-  const slack = new LiveSlackTransport(env.slackToken, env.slackChannel, Boolean(env.slackDispatchEnabled));
+  const slack = new LiveSlackTransport(
+    env.slackToken,
+    env.slackChannel,
+    Boolean(env.slackDispatchEnabled),
+    env.slackApprovedStatusSenderIds,
+  );
   const dispatch = new DispatchEngine(
     cfg.store,
     loadPermissions(),

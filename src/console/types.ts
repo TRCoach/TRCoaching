@@ -63,6 +63,12 @@ export type DecisionKind =
   | "irreversible_security";
 export type DecisionStatus = "pending" | "approved" | "rejected" | "more_evidence_requested";
 export type DecisionAct = "approve" | "reject" | "request_evidence";
+export type LaneActionAct =
+  | "request_evidence"
+  | "add_instruction"
+  | "retry"
+  | "resolve"
+  | "acknowledge";
 
 export interface FounderActionConfig {
   id: string;

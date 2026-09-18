@@ -85,6 +85,17 @@ export interface StoredAudit {
   correlationId?: string;
 }
 
+export interface StoredLaneState {
+  ref: string;
+  lane: string;
+  outcome?: "progressed" | "blocked" | "awaiting_external" | "founder_required";
+  reason?: string;
+  nextAction?: string;
+  updatedAt: string;
+  acknowledgedAt?: string;
+  resolvedAt?: string;
+}
+
 export interface StoreData {
   version: number;
   revision: number;
@@ -95,6 +106,7 @@ export interface StoreData {
   preferences: ActionPreference[];
   jobs: StoredJob[];
   audits: StoredAudit[];
+  laneStates: StoredLaneState[];
   probes: StoredProbe[];
   decisions: DecisionItem[];
   evidenceCards: EvidenceCard[];
@@ -117,6 +129,7 @@ export function emptyData(): StoreData {
     preferences: [],
     jobs: [],
     audits: [],
+    laneStates: [],
     probes: [],
     decisions: [],
     evidenceCards: [],
@@ -132,6 +145,7 @@ export function migrate(raw: StoreData): StoreData {
   data.preferences ??= [];
   data.jobs ??= [];
   data.audits ??= [];
+  data.laneStates ??= [];
   data.probes ??= [];
   data.decisions ??= [];
   data.evidenceCards ??= [];
