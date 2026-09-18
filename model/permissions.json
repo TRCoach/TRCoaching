@@ -1,0 +1,116 @@
+{
+  "id": "tr-training-permission-registry-v1",
+  "version": "1.0.0",
+  "currentMode": "TEST",
+  "betaTarget": "2026-09-25",
+  "modes": ["TEST", "CONTROLLED_BETA", "LIVE"],
+  "maturityLevels": [
+    "assisted",
+    "approval-gated",
+    "autonomous-within-boundaries",
+    "managed-by-exception"
+  ],
+  "note": "Founder unlocks are recorded as Drive decision titles + env placeholders only. Agents cannot promote mode or self-modify policy.",
+  "unlocks": [
+    {
+      "id": "payments",
+      "capability": "payments",
+      "title": "Live Stripe charges, payment links, and livemode Closed Won",
+      "founderUnlock": "Founder records LIVE mode plus Stripe Package READY FOR LIVE evidence. Sam still owns payment_clear.",
+      "allowedIn": ["LIVE"],
+      "maturity": "approval-gated",
+      "defaultInTest": "blocked",
+      "wake": "Sam"
+    },
+    {
+      "id": "sales_messaging",
+      "capability": "sales_messaging",
+      "title": "Outbound sales messaging beyond fixture/dry-run stubs",
+      "founderUnlock": "Founder unlocks CONTROLLED_BETA or LIVE for approved offer copy versions.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
+      "maturity": "approval-gated",
+      "defaultInTest": "assisted_draft_only",
+      "wake": "Sam"
+    },
+    {
+      "id": "onboarding",
+      "capability": "onboarding",
+      "title": "Client onboarding pack send beyond dry-run pointers",
+      "founderUnlock": "Founder unlocks CONTROLLED_BETA after privacy notice + consent titles are approved.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
+      "maturity": "approval-gated",
+      "defaultInTest": "assisted_draft_only",
+      "wake": "Jordan"
+    },
+    {
+      "id": "routine_coaching_communications",
+      "capability": "routine_coaching_communications",
+      "title": "Routine check-in prompts and adherence nudges",
+      "founderUnlock": "Founder unlocks CONTROLLED_BETA for code-only check-in messages. No Zone C content.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
+      "maturity": "autonomous-within-boundaries",
+      "defaultInTest": "assisted_draft_only",
+      "wake": "Jordan"
+    },
+    {
+      "id": "programme_assignment_golive",
+      "capability": "programme_assignment_golive",
+      "title": "First-client programme assignment and go-live",
+      "founderUnlock": "Per-client founder_golive_approval. Mode promotion does not bypass the human Ready or founder gate.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
+      "maturity": "approval-gated",
+      "defaultInTest": "blocked",
+      "wake": "Founder"
+    },
+    {
+      "id": "refunds_credits",
+      "capability": "refunds_credits",
+      "title": "Stripe refunds or credits",
+      "founderUnlock": "Every refund/credit requires a founder decision. LIVE mode still does not auto-refund.",
+      "allowedIn": ["LIVE"],
+      "maturity": "managed-by-exception",
+      "defaultInTest": "blocked",
+      "wake": "Founder"
+    },
+    {
+      "id": "privacy_legal_exceptions",
+      "capability": "privacy_legal_exceptions",
+      "title": "Material legal or privacy exception",
+      "founderUnlock": "Never automated. Founder + ChatGPT policy review against Drive.",
+      "allowedIn": [],
+      "maturity": "managed-by-exception",
+      "defaultInTest": "blocked",
+      "wake": "Founder"
+    },
+    {
+      "id": "irreversible_security_account",
+      "capability": "irreversible_security_account",
+      "title": "Irreversible account or security changes",
+      "founderUnlock": "Never automated. Founder only, outside this engine.",
+      "allowedIn": [],
+      "maturity": "managed-by-exception",
+      "defaultInTest": "blocked",
+      "wake": "Founder"
+    },
+    {
+      "id": "metricool_schedule",
+      "capability": "metricool_schedule",
+      "title": "Metricool schedule of dual-PASS assets",
+      "founderUnlock": "CONTROLLED_BETA or LIVE after exact-final TAYLOR PASS + CHATGPT PASS on checksum/config.",
+      "allowedIn": ["CONTROLLED_BETA", "LIVE"],
+      "maturity": "approval-gated",
+      "defaultInTest": "dry_run_only",
+      "wake": "Taylor"
+    },
+    {
+      "id": "policy_self_modify",
+      "capability": "policy_self_modify",
+      "title": "Agent self-modification of policy/SOP",
+      "founderUnlock": "Forbidden in every mode. Learning may only propose versioned changes.",
+      "allowedIn": [],
+      "maturity": "managed-by-exception",
+      "defaultInTest": "blocked",
+      "wake": "ChatGPT"
+    }
+  ]
+}

@@ -29,6 +29,7 @@ export const schemas = {
   handoff: loadSchema("handoff.schema.json"),
   socialQa: loadSchema("social-qa.schema.json"),
   benchmark: loadSchema("benchmark-report.schema.json"),
+  permissions: loadSchema("permission-registry.schema.json"),
 };
 
 ajv.addSchema(schemas.socialQa);
@@ -39,6 +40,7 @@ const validators = {
   handoff: ajv.compile(schemas.handoff),
   socialQa: ajv.getSchema("https://trcoach.local/schemas/social-qa.schema.json")!,
   benchmark: ajv.compile(schemas.benchmark),
+  permissions: ajv.compile(schemas.permissions),
 };
 
 export function validateAgainst(

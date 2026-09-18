@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { invokeAdapter } from "./adapters/dry-run.js";
 import { coverage, loadLifecycle, StateEngine } from "./engine/state-engine.js";
+import { loadPermissions } from "./permissions.js";
 import { repoRoot } from "./paths.js";
 import { fixtureFiles, readJson, validateAgainst } from "./schema.js";
 import { FEED_LAYOUT, REEL_LAYOUT } from "./social/layout.js";
@@ -33,12 +34,18 @@ function validateAll(): { ok: boolean; results: Record<string, unknown> } {
     const result = validateAgainst(kind, readJson(path));
     return { path, kind, ...result };
   });
+  const permissionsCheck = validateAgainst("permissions", loadPermissions());
 
-  const ok = cov.required_fields_present && transitionErrors.length === 0 && fixtureChecks.every((item) => item.ok);
+  const ok =
+    cov.required_fields_present &&
+    transitionErrors.length === 0 &&
+    fixtureChecks.every((item) => item.ok) &&
+    permissionsCheck.ok;
   return {
     ok,
     results: {
       model: { id: model.id, ...cov, transitionErrors },
+      permissions: permissionsCheck,
       fixtures: fixtureChecks,
       adapters: Object.values({
         Drive: invokeAdapter("Drive", "dry_run.ping", {}),

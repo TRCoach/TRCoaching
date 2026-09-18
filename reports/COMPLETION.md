@@ -10,8 +10,8 @@ As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 —
 | --- | --- |
 | `npm ci` | pass |
 | `npm run build` | pass |
-| `npm test` | pass (15/15), including the required negative cases |
-| `npm run validate` | pass — 31 states, 42 transitions, all required fields present |
+| `npm test` | pass (21/21), including the required negative cases plus learning/permission tests |
+| `npm run validate` | pass — 44 states, 57 transitions, all required fields present |
 | `npm run benchmark:social` | pass — local files only |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |
 
@@ -30,9 +30,11 @@ Storyboard JSON + three scene JPEGs are the deterministic video-equivalent if H.
 
 ## State-model coverage
 
-- 31 states from `uninitialized` through offboarding, including social QA and blocker routing
-- 42 transitions, each with the 13 required fields
-- Happy path + fail-closed negatives in `test/`
+- 44 states from `uninitialized` through offboarding, plus weekly marketing-cycle and learning tracks
+- 57 transitions, each with the 13 required fields
+- Parallel tracks: commercial, marketing_cycle, learning (learning does not consume commercial state)
+- Permission registry `model/permissions.json`: mode `TEST`, beta target 25 Sep 2026
+- Happy path + fail-closed negatives + learning/self-modify + TEST schedule block in `test/`
 
 ## Live-integration gaps
 
@@ -42,6 +44,8 @@ Storyboard JSON + three scene JPEGs are the deterministic video-equivalent if H.
 - Stripe: dry-run/read evidence only; live charges/refunds/credits/payment links hard-stopped
 - Superset: dry-run delivery codes; no Zone C on the bus
 - Slack: convention only (`Grok_Alex:` + one bounded task); no live write
+- Mode promotion to CONTROLLED_BETA/LIVE is a founder unlock, not an agent action
+- Learning cannot apply policy; Drive remains the SOP/policy source of truth
 
 ## Zero live side effects
 

@@ -11,7 +11,10 @@ import type {
   LifecycleModel,
   LifecycleTransition,
 } from "../types.js";
+import { loadPermissions, permissionAllowed } from "../permissions.js";
 import { missingEvidence, runGuard } from "./guards.js";
+import { wakeFor } from "./wake.js";
+import type { LifecycleTrack } from "../types.js";
 
 const TRANSITION_FIELDS = [
   "id",
@@ -56,11 +59,25 @@ export function coverage(model: LifecycleModel): { states: number; transitions: 
 export function emptyState(model: LifecycleModel): ControlState {
   return {
     current: model.initialState,
+    tracks: {
+      commercial: model.initialState,
+      marketing_cycle: "marketing_cycle_idle",
+      learning: "learning_idle",
+    },
     seenEventIds: [],
     seenIdempotencyKeys: [],
     evidence: {},
     history: [],
   };
+}
+
+function trackOf(transition: LifecycleTransition): LifecycleTrack {
+  return transition.track ?? "commercial";
+}
+
+function trackPosition(state: ControlState, track: LifecycleTrack): string {
+  if (track === "commercial") return state.current;
+  return state.tracks?.[track] ?? (track === "marketing_cycle" ? "marketing_cycle_idle" : "learning_idle");
 }
 
 export function materialiseKey(template: string, evidence: EvidenceMap): string {
@@ -106,9 +123,10 @@ export class StateEngine {
       return this.duplicate(event, "idempotency_key");
     }
 
-    const transition = this.model.transitions.find(
-      (item) => item.from === this.state.current && item.event === event.type,
-    );
+    const transition = this.model.transitions.find((item) => {
+      const track = trackOf(item);
+      return item.event === event.type && item.from === trackPosition(this.state, track);
+    });
     if (!transition) {
       return reject(
         event,
@@ -137,6 +155,13 @@ export class StateEngine {
       if (!founder.ok) return reject(event, founder.reason ?? "founder gate failed");
     }
 
+    if (transition.requiredPermission) {
+      const permitted = permissionAllowed(loadPermissions(), transition.requiredPermission);
+      if (!permitted.ok) {
+        return reject(event, permitted.reason ?? "permission denied");
+      }
+    }
+
     const adapterResult = invokeAdapter(
       transition.systemOfRecord,
       transition.automatedAction,
@@ -163,8 +188,14 @@ export class StateEngine {
       externalWrite: false,
     };
 
-    this.state.current = transition.to;
+    const track = trackOf(transition);
+    if (track === "commercial") {
+      this.state.current = transition.to;
+    }
+    this.state.tracks = this.state.tracks ?? emptyState(this.model).tracks;
+    this.state.tracks[track] = transition.to;
     this.state.evidence = evidence;
+    result.nextOwner = wakeFor(transition).owner;
     this.state.seenEventIds.push(event.event_id);
     this.state.seenIdempotencyKeys.push(event.idempotency_key);
     if (computedKey) this.state.seenIdempotencyKeys.push(computedKey);

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trcoach.local/schemas/permission-registry.schema.json",
+  "title": "TR TEST/CONTROLLED_BETA/LIVE permission registry",
+  "type": "object",
+  "required": ["id", "currentMode", "betaTarget", "modes", "maturityLevels", "unlocks"],
+  "additionalProperties": true,
+  "properties": {
+    "id": { "type": "string" },
+    "currentMode": { "type": "string", "enum": ["TEST", "CONTROLLED_BETA", "LIVE"] },
+    "betaTarget": { "type": "string" },
+    "modes": { "type": "array", "items": { "type": "string" } },
+    "maturityLevels": { "type": "array", "items": { "type": "string" } },
+    "unlocks": {
+      "type": "array",
+      "minItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["id", "capability", "founderUnlock", "allowedIn", "maturity"],
+        "properties": {
+          "id": { "type": "string" },
+          "capability": { "type": "string" },
+          "founderUnlock": { "type": "string" },
+          "allowedIn": { "type": "array", "items": { "type": "string" } },
+          "maturity": {
+            "type": "string",
+            "enum": [
+              "assisted",
+              "approval-gated",
+              "autonomous-within-boundaries",
+              "managed-by-exception"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

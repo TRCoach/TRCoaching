@@ -49,3 +49,27 @@ flowchart TD
 ```
 
 Social publication is not a commercial-state shortcut. First-client go-live stays on the founder gate.
+
+Parallel tracks (do not consume commercial state):
+
+```mermaid
+flowchart LR
+  idle[marketing_cycle_idle] --> analyse
+  analyse --> generate
+  generate --> produce
+  produce --> qa
+  qa --> taylorPass[Taylor PASS]
+  taylorPass --> chatgptPass[ChatGPT PASS]
+  chatgptPass --> scheduled[Metricool schedule]
+  scheduled --> monitor
+  monitor --> idle
+  monitor --> learnM[propose_marketing_learning]
+  learnIdle[learning_idle] --> sales[propose_sales_learning]
+  learnIdle --> coach[propose_coaching_learning]
+  learnIdle --> learnM
+  sales --> review[ChatGPT review]
+  coach --> review
+  learnM --> review
+  review --> founder[founder SOP approval]
+  founder --> learnIdle
+```

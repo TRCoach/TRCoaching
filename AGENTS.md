@@ -46,6 +46,14 @@ Connectors are interfaces with **dry-run/mock** implementations. The engine neve
 
 State transitions **fail closed** without required evidence.
 
+## Continuous learning
+
+Sales (conversations/objections/conversions), coaching (adherence/check-ins/programme/retention), and marketing (performance/lead quality/sales feedback) may only emit **versioned proposals**. ChatGPT reviews; founder approves SOP pointers on Drive. Agents never self-modify policy.
+
+Weekly marketing cycle: analyse → generate → produce → QA → TAYLOR PASS → CHATGPT PASS → Metricool schedule → monitor → next-cycle learning.
+
+Operating mode registry: `model/permissions.json` (`TEST` now, beta target 25 Sep 2026, then `CONTROLLED_BETA` / `LIVE` by founder unlock only).
+
 ## Exact safety gates
 
 - Test-mode payment cannot become live Closed Won

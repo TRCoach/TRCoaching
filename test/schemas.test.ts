@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fixtureFiles, readJson, validateAgainst } from "../src/schema.ts";
 import { coverage, loadLifecycle } from "../src/engine/state-engine.ts";
+import { loadPermissions } from "../src/permissions.ts";
 
 describe("schemas and model", () => {
   it("accepts valid fixtures", () => {
@@ -29,5 +30,7 @@ describe("schemas and model", () => {
     assert.equal(cov.required_fields_present, true);
     assert.ok(cov.states >= 20);
     assert.ok(cov.transitions >= 30);
+    const permissions = validateAgainst("permissions", loadPermissions());
+    assert.equal(permissions.ok, true, permissions.errors.join("; "));
   });
 });

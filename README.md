@@ -51,6 +51,8 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 - Stripe evidence is fixture/dry-run only; no live activation
 - Ready, founder go-live, refund/credit, and publication stay human-gated
 - Slack command bus is specified, not connected
+- Operating mode is `TEST` until a founder unlock in `model/permissions.json` (beta target 25 Sep 2026)
+- Learning emits versioned SOP proposals only; agents cannot self-modify Drive policy
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
 
-See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), and the phased beta plan. Bounded benchmark evidence is in `reports/COMPLETION.md` and `reports/benchmark-social.json`.
+See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), wake routing, and the phased beta plan. Bounded benchmark evidence is in `reports/COMPLETION.md` and `reports/benchmark-social.json`.

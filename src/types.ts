@@ -20,6 +20,8 @@ export interface RetryPolicy {
   onExhausted: "fail_closed" | "hold_for_founder";
 }
 
+export type LifecycleTrack = "commercial" | "marketing_cycle" | "learning";
+
 export interface LifecycleTransition {
   id: string;
   from: string;
@@ -35,6 +37,9 @@ export interface LifecycleTransition {
   nextTrigger: string;
   founderGate: boolean;
   idempotencyKey: string;
+  track?: LifecycleTrack;
+  requiredPermission?: string;
+  learningDomain?: "sales" | "coaching" | "marketing";
 }
 
 export interface LifecycleModel {
@@ -88,6 +93,7 @@ export interface ApplyResult {
 
 export interface ControlState {
   current: string;
+  tracks: Record<LifecycleTrack, string>;
   seenEventIds: string[];
   seenIdempotencyKeys: string[];
   evidence: EvidenceMap;

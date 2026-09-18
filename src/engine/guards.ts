@@ -153,6 +153,33 @@ export function runGuard(
       return evidence.money_movement === "none"
         ? { ok: true }
         : { ok: false, reason: "cancellation refund/credit routes to founder" };
+    case "learning_proposal_only":
+      if (flag(evidence, "apply_policy") || flag(evidence, "self_modify_policy")) {
+        return { ok: false, reason: "agents must never self-modify policy" };
+      }
+      if (!evidence.proposal_version || !evidence.learning_domain) {
+        return { ok: false, reason: "learning requires a versioned proposal only" };
+      }
+      return { ok: true };
+    case "chatgpt_reviewed_learning":
+      if (!flag(evidence, "chatgpt_learning_review")) {
+        return { ok: false, reason: "learning proposals require ChatGPT review" };
+      }
+      return { ok: true };
+    case "founder_sop_approval":
+      if (!flag(evidence, "founder_sop_approval")) {
+        return { ok: false, reason: "SOP/rule changes require founder approval" };
+      }
+      if (flag(evidence, "apply_policy") || flag(evidence, "self_modify_policy")) {
+        return { ok: false, reason: "agents must never self-modify policy" };
+      }
+      return { ok: true };
+    case "taylor_pass_required":
+      return flag(evidence, "taylor_pass")
+        ? { ok: true }
+        : { ok: false, reason: "TAYLOR PASS required for this checksum/config" };
+    case "weekly_cycle_dual_pass":
+      return runGuard("publication_dual_pass", evidence, transition);
     default:
       return { ok: false, reason: `unknown guard ${name} fails closed` };
   }

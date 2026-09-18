@@ -36,3 +36,16 @@
 | social_asset_drafted | marketing_active | social_asset_drafted | social_qa_completed | Taylor |
 | social_qa_completed | social_asset_drafted | social_qa_recorded | request_publication | ChatGPT |
 | request_publication | social_qa_recorded | publish_eligible | none | Taylor |
+| analyse_marketing_cycle | marketing_cycle_idle | marketing_cycle_analyse | generate_marketing_cycle | Taylor |
+| generate_marketing_cycle | analyse | generate | produce_marketing_cycle | Taylor |
+| produce_marketing_cycle | generate | produce | qa_marketing_cycle | Cursor |
+| qa_marketing_cycle | produce | qa | taylor_pass_marketing_cycle | ChatGPT |
+| taylor_pass_marketing_cycle | qa | taylor_pass | chatgpt_pass_marketing_cycle | Taylor |
+| chatgpt_pass_marketing_cycle | taylor_pass | chatgpt_pass | schedule_marketing_cycle | ChatGPT |
+| schedule_marketing_cycle | chatgpt_pass | scheduled | monitor_marketing_cycle | Taylor |
+| monitor_marketing_cycle | scheduled | monitor | propose_marketing_learning | Taylor |
+| propose_sales_learning | learning_idle | learning_proposal | review_learning_proposal | Sam |
+| propose_coaching_learning | learning_idle | learning_proposal | review_learning_proposal | Jordan |
+| propose_marketing_learning | learning_idle | learning_proposal | review_learning_proposal | Taylor |
+| review_learning_proposal | learning_proposal | learning_reviewed | founder_approve_sop_change | ChatGPT |
+| founder_approve_sop_change | learning_reviewed | sop_change_recorded | none | Founder |
