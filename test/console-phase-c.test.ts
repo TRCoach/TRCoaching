@@ -242,6 +242,48 @@ describe("founder console phase C rehearsals", () => {
     assert.match(collected.statuses[0]?.detail ?? "", /zero business-system writes/);
   });
 
+  it("promotes a connector card only after a matching completed result is persisted", async () => {
+    const store = new MemoryStore();
+    const updatedAt = new Date().toISOString();
+    store.exclusive((data) => {
+      data.jobs.push({
+        id: "evt_verified_slack",
+        correlationId: "corr_verified_slack",
+        title: "Verified Slack round trip",
+        owner: "Alex",
+        executor: "Slack",
+        status: "COMPLETED",
+        boundedAction: SLACK_REHEARSAL_ACTION,
+        evidenceRefs: ["TRCoach/TRCoaching"],
+        resultSummary: "verified return",
+        createdAt: updatedAt,
+        updatedAt,
+        externalId: "300.1",
+        founderGate: false,
+      });
+      data.resultEnvelopes.push({
+        id: "env_verified_slack",
+        jobId: "evt_verified_slack",
+        correlationId: "corr_verified_slack",
+        status: "COMPLETED",
+        detail: "approved OPS_STATUS with zero business-system writes",
+        collectedAt: updatedAt,
+      });
+    });
+    const evidence = collectEvidence({
+      demoFixtures: false,
+      slackToken: "xoxb-test",
+      slackChannel: "C0C2B0TFN48",
+      slackDispatchEnabled: true,
+    });
+    const service = new ConsoleService(loadPermissions(), { store, evidence });
+    await service.refreshJobs();
+    const slack = service.evidenceCards.find((item) => item.id === "slack");
+    assert.equal(slack?.freshness, "VERIFIED");
+    assert.equal(slack?.lastVerified, updatedAt);
+    assert.match(slack?.detail ?? "", /Founder Console .* Slack\/Grok .* OPS_STATUS .* Console round trip/);
+  });
+
   it("emits one Slack OPS_EVENT and accepts only a matching idempotent OPS_STATUS", async () => {
     const slack = new MemorySlackTransport();
     const store = new MemoryStore();

@@ -1306,6 +1306,7 @@ export class ConsoleService {
       }));
     });
     this.applyProbeLabels(probes);
+    this.reconcileVerifiedDispatchEvidence();
     this.lastDispatch = this.lastDispatch
       ? { ...this.lastDispatch, authorisedGovernedDispatchCount: refreshed.authorisedGovernedDispatchCount }
       : this.lastDispatch;
@@ -1330,6 +1331,29 @@ export class ConsoleService {
         card.evidenceRef = probe.evidenceLabel;
       }
     }
+  }
+
+  private reconcileVerifiedDispatchEvidence(): void {
+    const snapshot = this.store.load();
+    const reconcile = (id: "slack" | "cursor", executor: "Slack" | "Cursor", label: string) => {
+      const job = snapshot.jobs
+        .filter((item) => item.executor === executor && item.status === "COMPLETED" && Boolean(item.externalId))
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0];
+      const card = this.evidenceCards.find((item) => item.id === id);
+      if (!job || !card) return;
+      const envelope = snapshot.resultEnvelopes.find((item) => item.jobId === job.id && item.status === "COMPLETED");
+      card.lastAttempted = job.updatedAt;
+      card.lastVerified = envelope?.collectedAt ?? job.updatedAt;
+      card.freshness = "VERIFIED";
+      card.evidenceRef = `${id}:${job.correlationId}`;
+      card.detail = `${label} verified by a matching COMPLETED result for ${job.id} (${job.correlationId}). ${envelope?.detail ?? job.resultSummary}`;
+      card.setupRequirement = "No setup action required. Keep the existing allowlist, TEST gates and result validation in place.";
+    };
+    reconcile("slack", "Slack", "Founder Console → Slack/Grok → OPS_STATUS → Console round trip");
+    reconcile("cursor", "Cursor", "Founder Console → Cursor Cloud → Console result collection");
+    this.store.exclusive((data) => {
+      data.evidenceCards = this.evidenceCards;
+    });
   }
 
   progressEverything(correlationId = newId("corr")): ActionResult {
