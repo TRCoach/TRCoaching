@@ -27,6 +27,7 @@ CURSOR_ALLOW_REPO = "TRCoach/TRCoaching"
 CURSOR_STARTING_REF = "cursor/tr-training-control-plane-fcd0"
 SLACK_DISPATCH_ENABLED = "1"
 SLACK_AI_OPS_CHANNEL = "C0C2B0TFN48"
+SLACK_APPROVED_STATUS_SENDER_IDS = "U0C1ES07MKK"
 
 # Secrets (wrangler secret put) — never commit values:
 # FOUNDER_SESSION_SECRET
