@@ -39,7 +39,7 @@ const TRANSITION_FIELDS = [
 ] as const;
 
 export function loadLifecycle(path?: string): LifecycleModel {
-  return loadJsonWithFallback(path, BUNDLED_LIFECYCLE, modelPath("lifecycle.json"));
+  return loadJsonWithFallback(path, BUNDLED_LIFECYCLE, () => modelPath("lifecycle.json"));
 }
 
 export function assertTransitionShape(transition: LifecycleTransition): string[] {

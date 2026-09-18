@@ -10,8 +10,15 @@ export const BUNDLED_PERMISSIONS = bundledPermissions as PermissionRegistry;
 export const BUNDLED_FOUNDER_ACTIONS = bundledFounderActions as FounderActionCatalog;
 export const BUNDLED_LIFECYCLE = bundledLifecycle as LifecycleModel;
 
-export function loadJsonWithFallback<T>(path: string | undefined, bundled: T, defaultPath: string): T {
-  const target = path ?? defaultPath;
+export function loadJsonWithFallback<T>(path: string | undefined, bundled: T, defaultPath: string | (() => string)): T {
+  let target = path;
+  if (!target) {
+    try {
+      target = typeof defaultPath === "function" ? defaultPath() : defaultPath;
+    } catch {
+      return structuredClone(bundled);
+    }
+  }
   try {
     return JSON.parse(readFileSync(target, "utf8")) as T;
   } catch (error) {

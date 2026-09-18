@@ -60,7 +60,7 @@ export function withTrustedMode(registry: PermissionRegistry, mode: OperatingMod
 }
 
 export function loadPermissions(path?: string): PermissionRegistry {
-  return loadJsonWithFallback(path, BUNDLED_PERMISSIONS, modelPath("permissions.json"));
+  return loadJsonWithFallback(path, BUNDLED_PERMISSIONS, () => modelPath("permissions.json"));
 }
 
 export function permissionAllowed(

@@ -3,7 +3,7 @@ import { modelPath } from "../paths.js";
 import { FOUNDER_ACTION_TITLES, REQUIRED_ACTION_FIELDS, type FounderActionCatalog, type FounderActionConfig } from "./types.js";
 
 export function loadFounderActions(path?: string): FounderActionCatalog {
-  return loadJsonWithFallback(path, BUNDLED_FOUNDER_ACTIONS, modelPath("founder-actions.json"));
+  return loadJsonWithFallback(path, BUNDLED_FOUNDER_ACTIONS, () => modelPath("founder-actions.json"));
 }
 
 export function assertActionCompleteness(catalog = loadFounderActions()): string[] {

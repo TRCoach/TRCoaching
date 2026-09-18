@@ -20,6 +20,7 @@ import { ConsoleService } from "../src/console/service.ts";
 import { startConsoleServer } from "../src/console/http.ts";
 import { loadPermissions } from "../src/permissions.ts";
 import { BUNDLED_PERMISSIONS, loadJsonWithFallback } from "../src/model-json.ts";
+import { importMetaDir, repoRoot } from "../src/paths.ts";
 import { forbiddenKeys } from "../src/sensitive.ts";
 import { authHeaders, loginFounder } from "./console-auth.ts";
 import worker from "../src/worker/index.ts";
@@ -405,6 +406,17 @@ describe("founder console phase C static acceptance", () => {
     const fallback = loadJsonWithFallback(undefined, { currentMode: "TEST" as const }, "/not-a-real/permissions.json");
     assert.equal(fallback.currentMode, "TEST");
     assert.throws(() => loadJsonWithFallback("/also-missing/permissions.json", { currentMode: "TEST" as const }, "/default"));
+    const fromThrowingDefault = loadJsonWithFallback(undefined, { currentMode: "TEST" as const }, () => {
+      throw new Error("Invalid URL string.");
+    });
+    assert.equal(fromThrowingDefault.currentMode, "TEST");
+  });
+
+  it("resolves repo paths without throwing when import.meta.url is invalid", () => {
+    assert.ok(importMetaDir("").length > 0);
+    assert.ok(importMetaDir("not-a-url").length > 0);
+    assert.ok(repoRoot("/").length > 0);
+    assert.equal(loadPermissions().currentMode, "TEST");
   });
 });
 
