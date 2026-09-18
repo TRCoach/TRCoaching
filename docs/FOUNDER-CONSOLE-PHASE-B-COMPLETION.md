@@ -34,4 +34,4 @@ Unauthorized writes: 0. Payments: 0. Publication: false. Paid spend: false.
 
 ## Tests
 
-`npm test` — 47 passing (Phase A preserved + Phase B auth, CSRF, persistence, dispatch, disconnected adapters).
+`npm test` — 52/52 passing (49/49 non-media including Phase B QA delta + 3/3 ffmpeg social). Validate: 44 states / 57 transitions / 17 actions. `console:check` pass in TEST.
