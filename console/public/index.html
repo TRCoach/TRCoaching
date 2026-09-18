@@ -51,6 +51,10 @@
           <textarea id="command-input" rows="3" required placeholder="Progress everything that can be progressed today."></textarea>
           <button type="submit">Dispatch command</button>
         </form>
+        <button type="button" id="prepare-social" class="hero-action">
+          <span>Prepare next week’s social media</span>
+          <small>Read performance and policy → plan → produce → QA → dual review → prepare safely</small>
+        </button>
       </section>
 
       <main id="main">
@@ -108,8 +112,8 @@
     </div>
 
     <dialog id="drawer" class="drawer">
-      <form method="dialog">
-        <button type="submit" class="ghost">Close</button>
+      <form method="dialog" class="drawer-close">
+        <button type="submit" class="ghost" aria-label="Close detail drawer">Close</button>
       </form>
       <div id="drawer-body"></div>
     </dialog>

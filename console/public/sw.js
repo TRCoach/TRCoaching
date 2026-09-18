@@ -1,4 +1,4 @@
-const CACHE = "tr-founder-console-test-v3";
+const CACHE = "tr-founder-console-test-v4";
 const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/offline.html", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
