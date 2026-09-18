@@ -68,13 +68,14 @@ button:focus, input:focus, textarea:focus { outline: 3px solid var(--focus); }
 .count { min-width: 1.8rem; height: 1.8rem; display: grid; place-items: center; border-radius: 999px; background: #0c110e; border: 1px solid var(--line); color: var(--muted); font-weight: 800; }
 .open-hint { display: inline-block; margin-top: 8px; color: var(--amber); font-size: .82rem; font-weight: 800; }
 .lane.progressed { border-left: 5px solid var(--green); }
-.lane.awaiting_external, .lane.AWAITING_EXTERNAL { border-left: 5px solid var(--amber); }
+.lane.awaiting_external, .lane.AWAITING_EXTERNAL, .lane.DISPATCHED_TO_GROK, .lane.CURSOR_PRODUCTION, .lane.AWAITING_TAYLOR_PASS, .lane.READY_FOR_CHATGPT, .lane.AWAITING_CHATGPT { border-left: 5px solid var(--amber); }
 .lane.blocked, .lane.BLOCKED, .lane.FAILED { border-left: 5px solid var(--red); }
 .lane.founder_required, .lane.FOUNDER_REQUIRED { border-left: 5px solid var(--blocked); }
+.lane.CHATGPT_QA_PASSED, .lane.METRICOOL_SCHEDULED, .lane.PROVIDER_VERIFIED { border-left: 5px solid var(--green); }
 .lane.UNKNOWN, .lane.NOT_CONNECTED, .lane.DEMO_FIXTURE { border-left: 5px solid var(--unknown); }
 .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; }
-.badge.progressed, .badge.COMPLETED, .badge.VERIFIED { color: var(--green); }
-.badge.pending, .badge.requested, .badge.queued, .badge.QUEUED, .badge.RUNNING, .badge.AWAITING_EXTERNAL, .badge.scheduled { color: var(--amber); }
+.badge.progressed, .badge.COMPLETED, .badge.VERIFIED, .badge.CHATGPT_QA_PASSED, .badge.METRICOOL_SCHEDULED, .badge.PROVIDER_VERIFIED { color: var(--green); }
+.badge.pending, .badge.requested, .badge.queued, .badge.QUEUED, .badge.RUNNING, .badge.AWAITING_EXTERNAL, .badge.DISPATCHED_TO_GROK, .badge.CURSOR_PRODUCTION, .badge.AWAITING_TAYLOR_PASS, .badge.READY_FOR_CHATGPT, .badge.AWAITING_CHATGPT, .badge.scheduled { color: var(--amber); }
 .badge.blocked, .badge.BLOCKED, .badge.FAILED { color: var(--red); }
 .badge.founder_required, .badge.FOUNDER_REQUIRED { color: var(--blocked); }
 .badge.UNKNOWN, .badge.NOT_CONNECTED, .badge.DEMO_FIXTURE, .badge.STALE { color: var(--unknown); }

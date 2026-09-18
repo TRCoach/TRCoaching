@@ -1,12 +1,20 @@
 import { permissionAllowed, resolveMode, type PermissionRegistry } from "../permissions.js";
 import { newId } from "./ids.js";
 import type { EvidenceMap } from "../types.js";
-import type { ConsoleStore, DispatchStatus, StoredJob } from "./store.js";
+import {
+  SOCIAL_AWAITING_STATUSES,
+  SOCIAL_PROGRESSED_STATUSES,
+  type ChatGptSocialHandoff,
+  type ConsoleStore,
+  type DispatchStatus,
+  type StoredJob,
+} from "./store.js";
 import type { EvidenceCard, EvidenceEnv } from "./evidence.js";
 import { collectEvidence } from "./evidence.js";
 import { CursorDispatch, type WorkerDispatch, type WorkerResult } from "./cursor-v1.js";
 import { ChatGptDispatch } from "./openai-responses.js";
 import { parseGrokAlexOpsStatus, validateOpsStatusAgainstJob, type ParsedOpsStatus } from "./ops-status.js";
+import { applySocialCycleIngest, formatChatGptSocialHandoff } from "./social-routing.js";
 
 export { CursorDispatch, type WorkerDispatch, type WorkerResult } from "./cursor-v1.js";
 export { ChatGptDispatch } from "./openai-responses.js";
@@ -22,6 +30,7 @@ export interface OpsEnvelope {
   evidence_refs: string[];
   due_time: string;
   stop_condition: string;
+  briefing?: string;
 }
 
 export interface OpsStatus {
@@ -40,6 +49,7 @@ export interface SlackCollectResult {
 export interface SlackTransport {
   configured: boolean;
   submit(envelope: OpsEnvelope): Promise<{ ok: boolean; externalId?: string; detail: string }>;
+  submitHandoff(handoff: ChatGptSocialHandoff): Promise<{ ok: boolean; externalId?: string; detail: string }>;
   collect(jobs: StoredJob[]): Promise<SlackCollectResult>;
   authTest(): Promise<{ ok: boolean; detail: string }>;
 }
@@ -47,6 +57,7 @@ export interface SlackTransport {
 export class MemorySlackTransport implements SlackTransport {
   configured = true;
   posts: OpsEnvelope[] = [];
+  handoffs: ChatGptSocialHandoff[] = [];
   inbox: string[] = [];
   constructor(private failIds: string[] = []) {}
   async submit(envelope: OpsEnvelope) {
@@ -57,6 +68,12 @@ export class MemorySlackTransport implements SlackTransport {
     if (dup) return { ok: true, externalId: `slack_${envelope.event_id}`, detail: "idempotent replay" };
     this.posts.push(envelope);
     return { ok: true, externalId: `slack_${envelope.event_id}`, detail: "fake slack accepted" };
+  }
+  async submitHandoff(handoff: ChatGptSocialHandoff) {
+    const dup = this.handoffs.find((item) => item.correlationId === handoff.correlationId);
+    if (dup) return { ok: true, externalId: `slack_handoff_${handoff.correlationId}`, detail: "idempotent handoff replay" };
+    this.handoffs.push(handoff);
+    return { ok: true, externalId: `slack_handoff_${handoff.correlationId}`, detail: "fake slack CHATGPT_SOCIAL_ACTION stored" };
   }
   async authTest() {
     return { ok: true, detail: "memory transport" };
@@ -105,7 +122,8 @@ export class LiveSlackTransport implements SlackTransport {
       `evidence_refs=${envelope.evidence_refs.join(",")}`,
       `due_time=${envelope.due_time}`,
       `stop_condition=${envelope.stop_condition}`,
-    ].join("\n");
+      envelope.briefing ? `\n${envelope.briefing}` : "",
+    ].filter(Boolean).join("\n");
     try {
       const posted = await this.postMessage(text);
       if (!posted.ok && posted.error === "not_in_channel") {
@@ -136,6 +154,24 @@ export class LiveSlackTransport implements SlackTransport {
     }
     if (!body.ok) return { ok: false, detail: `Slack API: ${body.error ?? response.status}`, error: body.error };
     return { ok: true, externalId: body.ts, detail: "posted to allowlisted #ai-ops" };
+  }
+  async submitHandoff(handoff: ChatGptSocialHandoff) {
+    if (!this.configured) {
+      return { ok: false, detail: "Slack handoff NOT_CONNECTED — missing allowlisted #ai-ops config" };
+    }
+    try {
+      const posted = await this.postMessage(formatChatGptSocialHandoff(handoff));
+      if (!posted.ok && posted.error === "not_in_channel") {
+        const joined = await this.joinChannel();
+        if (joined.ok) return this.postMessage(formatChatGptSocialHandoff(handoff));
+        return { ok: false, detail: `Slack API: not_in_channel (${joined.detail})` };
+      }
+      return posted.ok
+        ? { ok: true, externalId: posted.externalId, detail: "CHATGPT_SOCIAL_ACTION posted to allowlisted #ai-ops" }
+        : posted;
+    } catch (error) {
+      return { ok: false, detail: `Slack API: ${slackErrorDetail(error, "handoff request failed")}` };
+    }
   }
   private async joinChannel(): Promise<{ ok: boolean; detail: string }> {
     if (!this.channel || !/^C[A-Z0-9]+$/.test(this.channel)) {
@@ -284,6 +320,11 @@ export interface SubEventPlan {
   reason: string;
   nextTrigger: string;
   evidenceRefs: string[];
+  initialStatus?: DispatchStatus;
+  skipExecutorCall?: boolean;
+  visibleOnDispatch?: DispatchStatus;
+  briefing?: string;
+  handoff?: ChatGptSocialHandoff;
 }
 
 export interface DispatchSummary {
@@ -298,6 +339,7 @@ export interface DispatchSummary {
   founderFriendlySummary: string;
   decomposition: SubEventPlan[];
   slackPosts: number;
+  slackHandoffs: number;
   unauthorizedWrites: 0;
   authorisedGovernedDispatchCount: number;
 }
@@ -348,6 +390,7 @@ export class DispatchEngine {
       job.status = status.status;
       job.resultSummary = status.detail;
       job.updatedAt = new Date().toISOString();
+      applySocialCycleIngest(data, job, status.status, status.detail);
       data.audits.unshift({
         id: newId("aud"),
         at: job.updatedAt,
@@ -418,10 +461,16 @@ export class DispatchEngine {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         founderGate: step.founderGate,
+        handoff: step.handoff,
       };
       if (!step.permitted || step.founderGate) {
         job.status = step.founderGate ? "FOUNDER_REQUIRED" : "BLOCKED";
         this.persist(job, correlationId);
+        jobs.push(job);
+        continue;
+      }
+      if (step.skipExecutorCall) {
+        await this.applySkipExecutor(job, step, correlationId);
         jobs.push(job);
         continue;
       }
@@ -440,13 +489,18 @@ export class DispatchEngine {
           evidence_refs: step.evidenceRefs,
           due_time: due,
           stop_condition: step.reason,
+          briefing: step.briefing,
         };
         const posted = await this.slack.submit(envelope);
         job.externalId = posted.externalId;
-        job.status = posted.ok ? "AWAITING_EXTERNAL" : "BLOCKED";
+        job.status = posted.ok ? (step.visibleOnDispatch ?? "AWAITING_EXTERNAL") : "BLOCKED";
         job.resultSummary = posted.detail;
       } else if (step.executor === "Cursor") {
-        this.applyWorker(job, await this.cursor.dispatch(job));
+        const cursorResult = await this.cursor.dispatch(job);
+        this.applyWorker(job, cursorResult);
+        if (cursorResult.status === "AWAITING_EXTERNAL" && step.visibleOnDispatch) {
+          job.status = step.visibleOnDispatch;
+        }
       } else if (step.executor === "ChatGPT") {
         this.applyWorker(job, await this.chatgpt.dispatch(job));
       } else {
@@ -459,9 +513,9 @@ export class DispatchEngine {
     }
 
     const buckets = {
-      progressed: jobs.filter((item) => item.status === "COMPLETED"),
+      progressed: jobs.filter((item) => SOCIAL_PROGRESSED_STATUSES.has(item.status)),
       stillRunning: jobs.filter((item) => item.status === "RUNNING" || item.status === "QUEUED"),
-      awaitingExternal: jobs.filter((item) => item.status === "AWAITING_EXTERNAL"),
+      awaitingExternal: jobs.filter((item) => SOCIAL_AWAITING_STATUSES.has(item.status)),
       blocked: jobs.filter((item) => item.status === "BLOCKED"),
       founderRequired: jobs.filter((item) => item.status === "FOUNDER_REQUIRED"),
       failed: jobs.filter((item) => item.status === "FAILED"),
@@ -481,6 +535,7 @@ export class DispatchEngine {
       founderFriendlySummary,
       decomposition,
       slackPosts: this.slack instanceof MemorySlackTransport ? this.slack.posts.length : 0,
+      slackHandoffs: this.slack instanceof MemorySlackTransport ? this.slack.handoffs.length : 0,
       unauthorizedWrites: 0,
       authorisedGovernedDispatchCount,
     };
@@ -494,9 +549,13 @@ export class DispatchEngine {
       const result = this.ingestStatusResult(status);
       if (result.rejected) rejected.push({ detail: status.event_id, reason: result.rejected });
     }
-    for (const job of this.store.load().jobs.filter((item) => item.status === "AWAITING_EXTERNAL")) {
-      if (job.executor === "Cursor") this.applyPersisted(job, await this.cursor.status(job));
-      if (job.executor === "ChatGPT") this.applyPersisted(job, await this.chatgpt.status(job));
+    for (const job of this.store.load().jobs) {
+      if (job.executor === "Cursor" && (job.status === "AWAITING_EXTERNAL" || job.status === "CURSOR_PRODUCTION")) {
+        this.applyPersisted(job, await this.cursor.status(job));
+      }
+      if (job.executor === "ChatGPT" && job.status === "AWAITING_EXTERNAL" && !job.handoff) {
+        this.applyPersisted(job, await this.chatgpt.status(job));
+      }
     }
     const jobs = this.store.load().jobs;
     return {
@@ -518,6 +577,34 @@ export class DispatchEngine {
 
   authorisedGovernedDispatchCount(): number {
     return this.store.load().jobs.filter((item) => Boolean(item.externalId)).length;
+  }
+
+  private async applySkipExecutor(job: StoredJob, step: SubEventPlan, correlationId: string): Promise<void> {
+    job.status = step.initialStatus ?? "AWAITING_CHATGPT";
+    if (step.handoff) {
+      job.handoff = step.handoff;
+      this.store.exclusive((data) => {
+        data.resultEnvelopes.unshift({
+          id: newId("env"),
+          jobId: job.id,
+          correlationId,
+          status: job.status,
+          detail: formatChatGptSocialHandoff(step.handoff!),
+          collectedAt: new Date().toISOString(),
+        });
+      });
+      const posted = await this.slack.submitHandoff(step.handoff);
+      if (posted.ok) {
+        job.externalId = posted.externalId;
+        job.status = step.visibleOnDispatch ?? "AWAITING_CHATGPT";
+        job.resultSummary = `CHATGPT_SOCIAL_ACTION stored for Personal ChatGPT. ${posted.detail}`;
+      } else {
+        job.status = "READY_FOR_CHATGPT";
+        job.resultSummary = `CHATGPT_SOCIAL_ACTION stored in Console evidence. Slack handoff post unavailable: ${posted.detail}. Not blocked for missing Metricool API.`;
+      }
+    }
+    job.updatedAt = new Date().toISOString();
+    this.persist(job, correlationId);
   }
 
   private applyWorker(job: StoredJob, result: WorkerResult): void {

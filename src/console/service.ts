@@ -11,6 +11,11 @@ import { classifyCommand } from "./router.js";
 import { MemoryStore, type ActionPreference, type ConsoleStore, type StoredJob } from "./store.js";
 import { collectEvidence, readEvidenceEnv, type EvidenceCard, type EvidenceEnv } from "./evidence.js";
 import { DispatchEngine, MemorySlackTransport, type DispatchSummary, type SubEventPlan } from "./dispatch.js";
+import {
+  SOCIAL_BOUNDED_ACTIONS,
+  buildSocialCyclePlan,
+  socialFounderSummary,
+} from "./social-routing.js";
 import { probeConnectors } from "./probes.js";
 import type { ProbeResult } from "./http-probe.js";
 import { collectLiveEvidence } from "./live-adapters.js";
@@ -963,87 +968,29 @@ export class ConsoleService {
   }
 
   async prepareNextWeeksSocial(): Promise<DispatchSummary> {
-    const card = (id: string) => this.evidenceCards.find((item) => item.id === id);
-    const freshness = (id: string) => card(id)?.freshness ?? "NOT_CONNECTED";
-    // A metadata ping is useful connector evidence, but it is not the source content
-    // required to build a real plan. Only purpose-specific, auditable read-backs qualify.
-    const metricoolReady = freshness("metricool") === "VERIFIED" && card("metricool")?.evidenceRef === "metricool_performance_queue";
-    const driveReady = freshness("drive") === "VERIFIED" && card("drive")?.evidenceRef === "approved_marketing_offer_sop_content";
-    const crmReady = freshness("crm") === "VERIFIED" && card("crm")?.evidenceRef === "safe_sales_faq_aggregate";
-    const sourcesReady = metricoolReady && driveReady && crmReady;
-    const rules = [
-      "no_back_to_back_audio_hooks_or_core_treatment",
-      "tiktok_photo_jpeg_or_webp_not_png",
-      "accurate_ai_aigc_disclosure",
-      "no_text_overlap",
-      "instagram_0800_1300_1900",
-      "facebook_1000_1200_1800",
-      "tiktok_1000_1200_1800",
-      "exact_final_taylor_and_chatgpt_pass",
-    ];
-    const plan: SubEventPlan[] = [
-      {
-        id: newId("evt"), lane: "marketing", owner: "Taylor", executor: "control_plane",
-        boundedAction: "read_metricool_prior_performance_and_current_queue", permitted: metricoolReady, founderGate: false,
-        reason: metricoolReady ? "Verified read-only Metricool performance and queue evidence is available." : `Metricool ${freshness("metricool")}; a connector ping is not a performance-and-queue read.`,
-        nextTrigger: "read_approved_drive_sources", evidenceRefs: ["metricool_performance", "metricool_queue"],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "ChatGPT", executor: "control_plane",
-        boundedAction: "read_approved_marketing_offer_and_sop_material", permitted: driveReady, founderGate: false,
-        reason: driveReady ? "Verified approved Drive marketing, offer and SOP content is available." : `Drive ${freshness("drive")}; metadata/title evidence is not an approved-content read.`,
-        nextTrigger: "read_safe_sales_learning", evidenceRefs: ["approved_marketing_offer_sop"],
-      },
-      {
-        id: newId("evt"), lane: "sales", owner: "Sam", executor: "control_plane",
-        boundedAction: "read_safe_sales_faq_learning", permitted: crmReady, founderGate: false,
-        reason: crmReady ? "Verified non-PII sales/FAQ aggregates are available." : `CRM ${freshness("crm")}; a connector ping is not safe sales/FAQ learning.`,
-        nextTrigger: "build_next_week_content_plan", evidenceRefs: ["safe_sales_faq_aggregate"],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "Taylor", executor: "control_plane",
-        boundedAction: "build_next_week_content_plan", permitted: sourcesReady, founderGate: false,
-        reason: sourcesReady ? "Build a source-backed next-week plan under the locked media, disclosure, layout and posting-window rules." : "Blocked until Metricool, Drive and CRM reads are VERIFIED.",
-        nextTrigger: "cursor_production", evidenceRefs: rules,
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "Cursor", executor: "Cursor",
-        boundedAction: "produce_next_week_social_assets", permitted: sourcesReady && this.dispatch.cursor.configured, founderGate: false,
-        reason: !sourcesReady ? "Source-backed plan is not ready." : this.dispatch.cursor.configured ? "Produce bounded assets only; no provider writes, publishing or paid spend." : "Cursor Cloud is NOT_CONNECTED.",
-        nextTrigger: "technical_qa", evidenceRefs: rules,
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "Cursor", executor: "Cursor",
-        boundedAction: "technical_qa_exact_social_assets", permitted: false, founderGate: false,
-        reason: "Dependency blocked until the exact production asset checksum is returned.",
-        nextTrigger: "taylor_specialist_review", evidenceRefs: ["exact_asset_checksum", ...rules],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "Taylor", executor: "Slack",
-        boundedAction: "taylor_specialist_exact_final_review", permitted: false, founderGate: false,
-        reason: "Dependency blocked until technical QA passes the exact final asset/copy/config.",
-        nextTrigger: "chatgpt_independent_review", evidenceRefs: ["exact_asset_checksum", "technical_qa_pass"],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "ChatGPT", executor: "ChatGPT",
-        boundedAction: "chatgpt_independent_exact_final_review", permitted: false, founderGate: false,
-        reason: "Dependency blocked until Taylor PASS exists; ChatGPT executor is also NOT_CONNECTED unless separately configured and approved.",
-        nextTrigger: "metricool_prepare_or_schedule", evidenceRefs: ["exact_asset_checksum", "taylor_pass"],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "ChatGPT", executor: "control_plane",
-        boundedAction: "metricool_prepare_or_schedule", permitted: false, founderGate: false,
-        reason: `${this.mode()} stops live Metricool scheduling/publication. Exact-final dual PASS and a separately permitted reversible write are required.`,
-        nextTrigger: "verify_metricool_provider_state", evidenceRefs: ["exact_asset_checksum", "taylor_pass", "chatgpt_pass"],
-      },
-      {
-        id: newId("evt"), lane: "marketing", owner: "ChatGPT", executor: "control_plane",
-        boundedAction: "verify_metricool_provider_state", permitted: false, founderGate: false,
-        reason: "Provider read-back can run only after a real authorised schedule attempt; scheduled never means published.",
-        nextTrigger: "monitor_publication", evidenceRefs: ["metricool_provider_id"],
-      },
-    ];
-    const result = await this.dispatch.dispatchPlans(plan, "prepare_next_weeks_social_media");
+    const correlationId = newId("corr");
+    const { plan, week } = buildSocialCyclePlan({
+      correlationId,
+      slackConfigured: this.dispatch.slack.configured,
+      cursorConfigured: this.dispatch.cursor.configured,
+    });
+    const result = await this.dispatch.dispatchPlans(plan as SubEventPlan[], "prepare_next_weeks_social_media", correlationId);
+    const chatgptJob = this.store.load().jobs.find((job) => job.boundedAction === SOCIAL_BOUNDED_ACTIONS.chatgpt && job.correlationId === result.correlationId);
+    result.founderFriendlySummary = socialFounderSummary({
+      mode: result.mode,
+      correlationId: result.correlationId,
+      weekLabel: week.label,
+      progressed: result.progressed.length,
+      stillRunning: result.stillRunning.length,
+      awaitingExternal: result.awaitingExternal.length,
+      blocked: result.blocked.length,
+      founderRequired: result.founderRequired.length,
+      grokDispatched: result.awaitingExternal.some((job) => job.status === "DISPATCHED_TO_GROK"),
+      cursorDispatched: result.awaitingExternal.some((job) => job.status === "CURSOR_PRODUCTION"),
+      chatgptReady: Boolean(chatgptJob?.handoff) || result.awaitingExternal.some((job) =>
+        job.status === "READY_FOR_CHATGPT" || job.status === "AWAITING_CHATGPT",
+      ),
+    });
     this.lastDispatch = result;
     return result;
   }

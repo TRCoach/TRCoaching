@@ -537,7 +537,7 @@ describe("founder console phase C worker and HTTP", () => {
       assert.equal(manifest.display, "standalone");
       assert.equal(manifest.background_color, "#0b0d10");
       const sw = await (await fetch(`${started.url}/sw.js`)).text();
-      assert.match(sw, /tr-founder-console-test-v4/);
+      assert.match(sw, /tr-founder-console-test-v5/);
       const css = await (await fetch(`${started.url}/styles.css`)).text();
       assert.match(css, /\[hidden\]/);
       assert.match(css, /minmax\(0, 1fr\)/);
