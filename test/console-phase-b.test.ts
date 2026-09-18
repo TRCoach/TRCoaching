@@ -254,7 +254,7 @@ describe("founder console phase B HTTP security", () => {
 });
 
 describe("founder console phase B QA delta", () => {
-  it("creates and reads Cursor v1 agents and reconciles 409 agent_id_conflict", async () => {
+  it("creates and reads server-minted Cursor v1 agents without unsafe create retries", async () => {
     const calls: Array<{ method: string; url: string; body?: unknown }> = [];
     const agentId = "bc-11111111-1111-1111-1111-111111111111";
     const fetchImpl: typeof fetch = async (input, init) => {
@@ -265,31 +265,22 @@ describe("founder console phase B QA delta", () => {
       if (method === "GET" && url.endsWith("/v1/models")) {
         return new Response(JSON.stringify({ items: [{ id: "composer-2", aliases: ["composer"] }] }), { status: 200 });
       }
-      if (method === "POST" && url.endsWith("/v1/agents") && calls.filter((item) => item.method === "POST").length === 1) {
+      if (method === "POST" && url.endsWith("/v1/agents")) {
         assert.equal(body.autoCreatePR, true);
         assert.deepEqual(body.repos, [{ url: "https://github.com/TRCoach/TRCoaching", startingRef: "main" }]);
-        assert.match(body.agentId, /^bc-[0-9a-f-]{36}$/);
+        assert.equal(body.agentId, undefined);
         assert.equal(body.model.id, "composer-2");
         assert.match(body.prompt.text, /TRCoach\/TRCoaching/);
         return new Response(
           JSON.stringify({
-            agent: { id: body.agentId, latestRunId: "run-created" },
+            agent: { id: agentId, latestRunId: "run-created" },
             run: { id: "run-created", status: "CREATING" },
           }),
           { status: 201 },
         );
       }
-      if (method === "POST" && url.endsWith("/v1/agents")) {
-        return new Response(JSON.stringify({ error: { code: "agent_id_conflict" } }), { status: 409 });
-      }
-      if (method === "GET" && /\/v1\/agents\/bc-/.test(url) && !url.includes("/runs/")) {
-        return new Response(JSON.stringify({ id: agentId, latestRunId: "run-existing" }), { status: 200 });
-      }
       if (url.endsWith("/runs/run-created")) {
         return new Response(JSON.stringify({ status: "FINISHED", result: "QA report", tests: ["validate"] }), { status: 200 });
-      }
-      if (url.endsWith("/runs/run-existing")) {
-        return new Response(JSON.stringify({ status: "RUNNING" }), { status: 200 });
       }
       return new Response("{}", { status: 404 });
     };
@@ -323,11 +314,10 @@ describe("founder console phase B QA delta", () => {
     const verified = await cursor.status({ ...job, externalId: created.externalId, runId: created.runId, model: created.model });
     assert.equal(verified.status, "COMPLETED");
     assert.deepEqual(verified.tests, ["validate"]);
-    const conflicted = await cursor.dispatch(job);
-    assert.equal(conflicted.status, "AWAITING_EXTERNAL");
-    assert.match(conflicted.detail, /409 agent_id_conflict/);
-    assert.equal(conflicted.runId, "run-existing");
-    assert.ok(calls.some((item) => item.method === "GET" && item.url.includes("/v1/agents/") && !item.url.includes("/runs/")));
+    const missingIdentity = await cursor.status(job);
+    assert.equal(missingIdentity.status, "BLOCKED");
+    assert.match(missingIdentity.detail, /never retried automatically/);
+    assert.equal(calls.filter((item) => item.method === "POST" && item.url.endsWith("/v1/agents")).length, 1);
   });
 
   it("keeps OpenAI spend gated and posts the Responses background contract", async () => {

@@ -262,7 +262,7 @@ export function collectEvidence(env: EvidenceEnv = readEvidenceEnv()): EvidenceC
           evidenceRef: "cursor_job",
           detail: "A server-only Cursor token is present. Public-beta v1 is wired (POST /v1/agents, GET run). Status stays UNKNOWN until a verified run read-back.",
           setupRequirement:
-            "CURSOR_CLOUD_AGENT_TOKEN (server-only), CURSOR_ALLOW_REPO=TRCoach/TRCoaching exactly, CURSOR_STARTING_REF, optional CURSOR_MODEL from GET /v1/models, autoCreatePR=true. Never fake COMPLETED.",
+            "CURSOR_CLOUD_AGENT_TOKEN (server-only), CURSOR_ALLOW_REPO=TRCoach/TRCoaching exactly, CURSOR_STARTING_REF, optional CURSOR_MODEL from GET /v1/models. TEST rehearsal uses autoCreatePR=false and never auto-retries an uncertain create.",
           credentialsExposed: false,
           demoFixture: false,
         }

@@ -336,12 +336,13 @@ describe("founder console phase C rehearsals", () => {
       calls.push({ url, body });
       if (url.endsWith("/v1/agents") && init?.method === "POST") {
         assert.equal(body?.autoCreatePR, false);
+        assert.equal(body?.agentId, undefined);
         assert.deepEqual((body?.repos as Array<{ url: string; startingRef: string }>)[0], {
           url: "https://github.com/TRCoach/TRCoaching",
           startingRef: "cursor/tr-training-control-plane-fcd0",
         });
         return new Response(
-          JSON.stringify({ agent: { id: body?.agentId, latestRunId: "run-r" }, run: { id: "run-r", status: "CREATING" } }),
+          JSON.stringify({ agent: { id: "bc-11111111-1111-4111-8111-111111111111", latestRunId: "run-r" }, run: { id: "run-r", status: "CREATING" } }),
           { status: 201 },
         );
       }
@@ -371,7 +372,7 @@ describe("founder console phase C rehearsals", () => {
       observedThis = this;
       const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : {};
       return new Response(
-        JSON.stringify({ agent: { id: body.agentId, latestRunId: "run-unbound" }, run: { id: "run-unbound", status: "CREATING" } }),
+        JSON.stringify({ agent: { id: "bc-22222222-2222-4222-8222-222222222222", latestRunId: "run-unbound" }, run: { id: "run-unbound", status: "CREATING" } }),
         { status: 201 },
       );
     };

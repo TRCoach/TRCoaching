@@ -73,10 +73,22 @@ function extractErrorCode(body: unknown): string {
   return "";
 }
 
+function extractErrorMessage(body: unknown): string {
+  if (!body || typeof body !== "object") return "";
+  const record = body as Record<string, unknown>;
+  const nested = record.error;
+  if (nested && typeof nested === "object") {
+    const message = (nested as Record<string, unknown>).message;
+    if (typeof message === "string") return message.slice(0, 160);
+  }
+  if (typeof record.message === "string") return record.message.slice(0, 160);
+  return "";
+}
+
 export class CursorDispatch implements WorkerDispatch {
   id = "cursor" as const;
   setupRequirement =
-    "Cursor Cloud Agents API v1 (public beta): server-only CURSOR_CLOUD_AGENT_TOKEN, exact repo TRCoach/TRCoaching, CURSOR_STARTING_REF, optional CURSOR_MODEL from GET /v1/models, autoCreatePR=true, deterministic bc-UUID. Never fake COMPLETED.";
+    "Cursor Cloud Agents API v1 (public beta): server-only CURSOR_CLOUD_AGENT_TOKEN, exact repo TRCoach/TRCoaching, CURSOR_STARTING_REF, optional CURSOR_MODEL from GET /v1/models. Use the server-minted agent id and never auto-retry an uncertain create. Never fake COMPLETED.";
   private token?: string;
   private allowRepo: string;
   private startingRef: string;
@@ -105,7 +117,6 @@ export class CursorDispatch implements WorkerDispatch {
     if (!this.configured) {
       return { ok: false, status: "BLOCKED", detail: `Cursor Cloud NOT_CONNECTED. ${this.setupRequirement}` };
     }
-    const agentId = cursorAgentId(`${job.id}:${CURSOR_ALLOW_REPO_EXACT}`);
     let model: string | undefined;
     try {
       model = await this.resolveModel();
@@ -118,7 +129,6 @@ export class CursorDispatch implements WorkerDispatch {
       };
     }
     const payload: Record<string, unknown> = {
-      agentId,
       name: "TRCoach/TRCoaching bounded QA",
       prompt: {
         text: [
@@ -136,14 +146,13 @@ export class CursorDispatch implements WorkerDispatch {
     };
     if (model) payload.model = { id: model };
     const created = await this.request("POST", "/v1/agents", payload);
-    if (created.status === 409 && extractErrorCode(created.body) === "agent_id_conflict") {
-      return this.reconcileConflict(agentId, model);
-    }
     if (created.status >= 400 || !created.body || typeof created.body !== "object") {
+      const code = extractErrorCode(created.body);
+      const message = extractErrorMessage(created.body);
       return {
         ok: false,
         status: "BLOCKED",
-        detail: `Cursor POST /v1/agents failed: ${created.status}`,
+        detail: `Cursor POST /v1/agents failed: ${created.status}${code ? ` ${code}` : ""}${message ? ` — ${message}` : ""}`,
         blockers: ["cursor_create_failed"],
         model,
       };
@@ -152,8 +161,17 @@ export class CursorDispatch implements WorkerDispatch {
       agent?: { id?: string; latestRunId?: string };
       run?: { id?: string; status?: string };
     };
-    const resolvedId = body.agent?.id ?? agentId;
+    const resolvedId = body.agent?.id;
     const runId = body.run?.id ?? body.agent?.latestRunId;
+    if (!resolvedId) {
+      return {
+        ok: false,
+        status: "BLOCKED",
+        detail: "Cursor create response did not include a verified server agent id. Do not retry automatically.",
+        blockers: ["cursor_agent_id_missing"],
+        model,
+      };
+    }
     return {
       ok: true,
       status: "AWAITING_EXTERNAL",
@@ -170,7 +188,15 @@ export class CursorDispatch implements WorkerDispatch {
     if (!this.configured) {
       return { ok: false, status: "BLOCKED", detail: `Cursor Cloud NOT_CONNECTED. ${this.setupRequirement}` };
     }
-    const agentId = job.externalId ?? cursorAgentId(`${job.id}:${CURSOR_ALLOW_REPO_EXACT}`);
+    const agentId = job.externalId;
+    if (!agentId) {
+      return {
+        ok: false,
+        status: "BLOCKED",
+        detail: "Cursor job has no verified server agent id. Create is never retried automatically after an uncertain response.",
+        blockers: ["cursor_agent_id_missing"],
+      };
+    }
     let runId = job.runId;
     if (!runId) {
       const agent = await this.getAgent(agentId);
