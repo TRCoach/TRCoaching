@@ -19,7 +19,7 @@
         <p class="eyebrow">TR Training</p>
         <h1>Founder Console</h1>
         <p class="lede">Founder-only. No anonymous access. TEST actions never move money or publish.</p>
-        <form id="login-form">
+        <form id="login-form" method="post" action="/api/login" onsubmit="event.preventDefault();">
           <label for="username">Username</label>
           <input id="username" name="username" autocomplete="username" required />
           <label for="password">Password</label>

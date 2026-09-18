@@ -23,7 +23,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .login-card { width: min(460px, 100%); background: var(--panel); padding: 28px; border: 1px solid var(--line); border-radius: 18px; }
 .eyebrow { letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); font-size: 0.75rem; margin: 0; }
 .lede, .install-note, .error { color: var(--muted); }
-.error { color: var(--red); }
+.error { color: var(--red); min-height: 1.4em; font-weight: 700; }
 label { display: block; margin: 12px 0 6px; }
 input, textarea, button { width: 100%; border-radius: 10px; border: 1px solid var(--line); background: #0f1318; padding: 12px; }
 button { background: var(--ink); color: #111; font-weight: 700; min-height: 44px; cursor: pointer; border: 0; }

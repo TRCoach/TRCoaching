@@ -67,8 +67,10 @@ export class FounderAuth {
     const userOk = username === this.config.username;
     const passOk = FounderAuth.verifyPassword(password, this.config.passwordHash);
     if (!userOk || !passOk) {
+      this.recordAttempt(ip);
       return { ok: false, status: 401, reason: "invalid founder credentials" };
     }
+    this.attempts.delete(ip);
     const token = randomBytes(32).toString("hex");
     const now = Date.now();
     const session: StoredSession = {
@@ -140,12 +142,19 @@ export class FounderAuth {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
-  private rateOk(ip: string): boolean {
+  private recordAttempt(ip: string): void {
     const now = Date.now();
     const recent = (this.attempts.get(ip) ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
     recent.push(now);
     this.attempts.set(ip, recent);
-    return recent.length <= LOGIN_MAX;
+  }
+
+  private rateOk(ip: string): boolean {
+    const now = Date.now();
+    const recent = (this.attempts.get(ip) ?? []).filter((ts) => now - ts < LOGIN_WINDOW_MS);
+    this.attempts.set(ip, recent);
+    const max = ip === "127.0.0.1" || ip === "::1" || ip === ":ffff:127.0.0.1" ? LOGIN_MAX + 10 : LOGIN_MAX;
+    return recent.length < max;
   }
 }
 

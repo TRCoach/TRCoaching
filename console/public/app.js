@@ -9,6 +9,7 @@ function badge(status) {
 }
 async function api(path, init) {
     const response = await fetch(path, {
+        credentials: "include",
         ...init,
         headers: {
             "content-type": "application/json",
