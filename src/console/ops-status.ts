@@ -23,38 +23,43 @@ export interface ParsedOpsStatus {
 
 export function parseGrokAlexOpsStatus(text: string): { status?: ParsedOpsStatus; reason?: string } {
   const trimmed = text.replace(/\r\n/g, "\n").trim();
-  if (!trimmed.startsWith(OPS_STATUS_PREFIX)) {
+  const lines = trimmed.split("\n");
+  const prefixIndex = lines.findIndex((line) => line.trim().startsWith(OPS_STATUS_PREFIX) && /\bOPS_STATUS\b/.test(line));
+  if (prefixIndex < 0) {
     return { reason: "missing Grok_Alex prefix" };
   }
-  if (!/\bOPS_STATUS\b/.test(trimmed)) {
-    return { reason: "not OPS_STATUS" };
+  const preamble = lines.slice(0, prefixIndex).map((line) => line.trim()).filter(Boolean);
+  if (preamble.some((line) => !ALLOWED_DISPATCH_STATUSES.has(line as DispatchStatus))) {
+    return { reason: "invalid OPS_STATUS preamble" };
   }
+  const protocolText = lines.slice(prefixIndex).join("\n");
   const fields: Record<string, string> = {};
-  for (const match of trimmed.matchAll(/^(event_id|correlation_id|status|executor|detail)=(.+)$/gm)) {
+  for (const match of protocolText.matchAll(/^(event_id|correlation_id|status|executor|detail|verified_evidence)=(.+)$/gm)) {
     const key = match[1];
     const value = match[2];
     if (key && value !== undefined) fields[key] = value.trim();
   }
   if (!fields.event_id) {
-    const inline = trimmed.match(/\bevent_id=(\S+)/);
+    const inline = protocolText.match(/\bevent_id=(\S+)/);
     if (inline?.[1]) fields.event_id = inline[1];
   }
   if (!fields.correlation_id) {
-    const inline = trimmed.match(/\bcorrelation_id=(\S+)/);
+    const inline = protocolText.match(/\bcorrelation_id=(\S+)/);
     if (inline?.[1]) fields.correlation_id = inline[1];
   }
   if (!fields.status) {
-    const inline = trimmed.match(/\bstatus=([A-Z_]+)/);
+    const inline = protocolText.match(/\bstatus=([A-Z_]+)/);
     if (inline?.[1]) fields.status = inline[1];
   }
   if (!fields.executor) {
-    const inline = trimmed.match(/\bexecutor=(\S+)/);
+    const inline = protocolText.match(/\bexecutor=(\S+)/);
     if (inline?.[1]) fields.executor = inline[1];
   }
   if (!fields.detail) {
-    const inline = trimmed.match(/\bdetail=([^\n]+)/);
+    const inline = protocolText.match(/\bdetail=([^\n]+)/);
     if (inline?.[1]) fields.detail = inline[1].trim();
   }
+  if (!fields.detail && fields.verified_evidence) fields.detail = fields.verified_evidence;
   if (!fields.event_id || !fields.correlation_id || !fields.status) {
     return { reason: "OPS_STATUS missing required fields" };
   }

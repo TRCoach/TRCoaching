@@ -64,7 +64,11 @@ export function classifyCommand(text: string): CommandClassification {
   const hits: string[] = [];
   if (/refund|credit/.test(normalized)) hits.push("refund_this_client");
   if (/daily business cycle/.test(normalized)) hits.push("run_daily_business_cycle");
-  if (/next week'?s marketing|generate.*marketing/.test(normalized)) {
+  if (
+    /next week'?s.*(?:marketing|social(?: media)?|content)/.test(normalized)
+    || /(?:marketing|social(?: media)?|content).*next week/.test(normalized)
+    || /generate.*marketing/.test(normalized)
+  ) {
     hits.push("generate_next_weeks_marketing");
   }
   if (/schedule/.test(normalized) && /approv/.test(normalized)) {
