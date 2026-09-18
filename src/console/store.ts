@@ -42,6 +42,7 @@ export interface StoredJob {
   tests?: string[];
   blockers?: string[];
   founderGate: boolean;
+  handoff?: ChatGptSocialHandoff;
 }
 
 export interface StoredProbe {
@@ -71,10 +72,74 @@ export type DispatchStatus =
   | "QUEUED"
   | "RUNNING"
   | "AWAITING_EXTERNAL"
+  | "DISPATCHED_TO_GROK"
+  | "CURSOR_PRODUCTION"
+  | "AWAITING_TAYLOR_PASS"
+  | "READY_FOR_CHATGPT"
+  | "AWAITING_CHATGPT"
+  | "CHATGPT_QA_PASSED"
+  | "METRICOOL_SCHEDULED"
+  | "PROVIDER_VERIFIED"
   | "BLOCKED"
   | "FOUNDER_REQUIRED"
   | "COMPLETED"
   | "FAILED";
+
+export const SOCIAL_VISIBLE_STATUSES = [
+  "DISPATCHED_TO_GROK",
+  "CURSOR_PRODUCTION",
+  "AWAITING_TAYLOR_PASS",
+  "READY_FOR_CHATGPT",
+  "AWAITING_CHATGPT",
+  "CHATGPT_QA_PASSED",
+  "METRICOOL_SCHEDULED",
+  "PROVIDER_VERIFIED",
+  "BLOCKED",
+] as const;
+
+export const SOCIAL_AWAITING_STATUSES = new Set<DispatchStatus>([
+  "AWAITING_EXTERNAL",
+  "DISPATCHED_TO_GROK",
+  "CURSOR_PRODUCTION",
+  "AWAITING_TAYLOR_PASS",
+  "READY_FOR_CHATGPT",
+  "AWAITING_CHATGPT",
+]);
+
+export const SOCIAL_PROGRESSED_STATUSES = new Set<DispatchStatus>([
+  "COMPLETED",
+  "CHATGPT_QA_PASSED",
+  "METRICOOL_SCHEDULED",
+  "PROVIDER_VERIFIED",
+]);
+
+export interface ChatGptSocialHandoff {
+  kind: "CHATGPT_SOCIAL_ACTION";
+  correlationId: string;
+  weekStart: string;
+  weekEnd: string;
+  weekLabel: string;
+  sopEvidenceRefs: string[];
+  taylorGrokOutput: string;
+  finalCaptions: string[];
+  finalMediaAssetRefs: string[];
+  targetNetworks: string[];
+  targetPostingTimes: {
+    instagram: string[];
+    facebook: string[];
+    tiktok: string[];
+  };
+  technicalQa: string;
+  taylorPassState: "pending" | "PASS" | "FAIL";
+  duplicationAudioContentChecks: string[];
+  aiPublicCopyControl: string;
+  metricoolExecutionOwner: "personal_chatgpt";
+  consoleMetricoolApi: "not_used";
+  independentExactFinalQaOwner: "personal_chatgpt";
+  nativeAiDisclosureOwner: "personal_chatgpt";
+  providerReadbackOwner: "personal_chatgpt";
+  returnFields: string[];
+}
 
 export interface StoredAudit {
   id: string;

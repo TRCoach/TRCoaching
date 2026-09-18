@@ -155,31 +155,26 @@ describe("founder console phase B", () => {
     assert.ok(store.load().audits.length >= 3);
   });
 
-  it("builds a truthful dependency-aware next-week social workflow", async () => {
-    const verified = collectEvidence({ demoFixtures: false }).map((card) =>
-      ["drive", "metricool", "crm"].includes(card.id)
-        ? {
-            ...card,
-            freshness: "VERIFIED" as const,
-            lastVerified: new Date().toISOString(),
-            evidenceRef:
-              card.id === "drive"
-                ? "approved_marketing_offer_sop_content"
-                : card.id === "metricool"
-                  ? "metricool_performance_queue"
-                  : "safe_sales_faq_aggregate",
-          }
-        : card,
-    );
-    const service = new ConsoleService(loadPermissions(), { evidence: verified });
+  it("builds an independent-executor next-week social workflow", async () => {
+    const slack = new MemorySlackTransport();
+    const store = new MemoryStore();
+    const dispatch = DispatchEngine.forTests(store, loadPermissions(), slack);
+    const service = new ConsoleService(loadPermissions(), {
+      store,
+      dispatch,
+      evidence: collectEvidence({ demoFixtures: false }),
+    });
     const summary = await service.prepareNextWeeksSocial();
-    assert.equal(summary.decomposition.length, 10);
-    assert.ok(summary.progressed.some((job) => job.boundedAction === "build_next_week_content_plan"));
-    assert.ok(summary.blocked.some((job) => job.boundedAction === "produce_next_week_social_assets"));
-    assert.ok(summary.blocked.some((job) => /dual PASS|Taylor PASS/i.test(job.resultSummary)));
+    assert.equal(summary.blocked.length, 0);
+    assert.ok(summary.awaitingExternal.length >= 4);
+    assert.ok(slack.posts.some((item) => item.kind === "OPS_EVENT" && item.bounded_action === "grok_taylor_social_cycle"));
+    assert.ok(slack.handoffs.some((item) => item.kind === "CHATGPT_SOCIAL_ACTION"));
+    assert.ok(summary.decomposition.some((step) => step.boundedAction === "CHATGPT_SOCIAL_ACTION"));
     assert.ok(summary.decomposition.some((step) => step.evidenceRefs.includes("tiktok_photo_jpeg_or_webp_not_png")));
     assert.ok(summary.decomposition.some((step) => step.evidenceRefs.includes("no_text_overlap")));
     assert.equal(summary.unauthorizedWrites, 0);
+    assert.match(summary.founderFriendlySummary, /CHATGPT_SOCIAL_ACTION/);
+    assert.equal(summary.founderFriendlySummary.includes("Blocked: 10"), false);
   });
 
   it("expires sessions and rate-limits login", async () => {

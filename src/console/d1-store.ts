@@ -406,7 +406,7 @@ export class D1Store {
             job.externalId ?? null,
             job.runId ?? null,
             job.model ?? null,
-            JSON.stringify({ tests: job.tests, blockers: job.blockers, evidenceRefs: job.evidenceRefs }),
+            JSON.stringify({ tests: job.tests, blockers: job.blockers, evidenceRefs: job.evidenceRefs, handoff: job.handoff }),
           ),
       );
     }
