@@ -9,7 +9,7 @@ import { getAction, loadFounderActions } from "./actions.js";
 import { seedDecisions, seedLaneItems } from "./demo-state.js";
 import { classifyCommand } from "./router.js";
 import { MemoryStore, type ActionPreference, type ConsoleStore, type StoredJob } from "./store.js";
-import { collectEvidence, readEvidenceEnv, type EvidenceCard } from "./evidence.js";
+import { collectEvidence, readEvidenceEnv, type EvidenceCard, type EvidenceEnv } from "./evidence.js";
 import { DispatchEngine, MemorySlackTransport, type DispatchSummary, type SubEventPlan } from "./dispatch.js";
 import { probeConnectors } from "./probes.js";
 import type { ProbeResult } from "./http-probe.js";
@@ -83,6 +83,7 @@ function inspectAdapter(system: SystemOfRecord, action: string, evidence: Eviden
 export interface ConsoleServiceOptions {
   store?: ConsoleStore;
   evidence?: EvidenceCard[];
+  evidenceEnv?: EvidenceEnv;
   dispatch?: DispatchEngine;
 }
 
@@ -91,6 +92,7 @@ export class ConsoleService {
   readonly store: ConsoleStore;
   readonly dispatch: DispatchEngine;
   readonly evidenceCards: EvidenceCard[];
+  readonly evidenceEnv: EvidenceEnv;
   readonly startedAt = Date.now();
   items: LaneItem[];
   decisions: DecisionItem[];
@@ -106,7 +108,8 @@ export class ConsoleService {
   ) {
     this.permissions = permissions;
     this.store = options.store ?? new MemoryStore();
-    this.evidenceCards = options.evidence ?? collectEvidence();
+    this.evidenceEnv = options.evidenceEnv ?? readEvidenceEnv();
+    this.evidenceCards = options.evidence ?? collectEvidence(this.evidenceEnv);
     this.dispatch =
       options.dispatch ??
       DispatchEngine.forTests(this.store, permissions, new MemorySlackTransport());
@@ -1266,14 +1269,15 @@ export class ConsoleService {
   }
 
   async refreshEvidence(fetchImpl?: typeof fetch) {
-    const env = readEvidenceEnv();
+    const env = { ...this.evidenceEnv };
     env.openaiForcedOff = true;
     const live = await collectLiveEvidence(env, fetchImpl ?? fetch);
-    for (const card of live) {
+    for (const card of [...collectEvidence(env), ...live]) {
       const idx = this.evidenceCards.findIndex((item) => item.id === card.id);
       if (idx >= 0) this.evidenceCards[idx] = card;
       else this.evidenceCards.push(card);
     }
+    this.reconcileVerifiedDispatchEvidence();
     this.store.exclusive((data) => {
       data.evidenceCards = this.evidenceCards;
     });
@@ -1296,7 +1300,7 @@ export class ConsoleService {
       data.lastRefreshAt = new Date().toISOString();
     });
     const refreshed = await this.dispatch.refresh();
-    const probes = await probeConnectors(readEvidenceEnv());
+    const probes = await probeConnectors(this.evidenceEnv);
     this.store.exclusive((data) => {
       data.probes = probes.map((probe) => ({
         id: probe.id,

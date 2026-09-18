@@ -147,7 +147,21 @@ export async function runCursorRehearsal(
       eventIds: [eventId],
     });
   });
-  const result = await cursor.dispatch(job);
+  let result;
+  try {
+    result = await cursor.dispatch(job);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message.slice(0, 240) : "unknown Cursor dispatch error";
+    job.status = "BLOCKED";
+    job.resultSummary = `Cursor dispatch failed before verified provider acceptance: ${detail}. No external business-system mutation.`;
+    job.blockers = ["cursor_dispatch_exception"];
+    job.updatedAt = new Date().toISOString();
+    store.exclusive((data) => {
+      const idx = data.jobs.findIndex((item) => item.id === job.id);
+      if (idx >= 0) data.jobs[idx] = job;
+    });
+    return { ok: false, job, reason: job.resultSummary };
+  }
   job.status = result.status;
   job.resultSummary = `${result.detail} Stop: no external business-system mutation. autoCreatePR=false. Ref ${CURSOR_REHEARSAL_REF}.`;
   job.externalId = result.externalId;

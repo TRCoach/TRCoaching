@@ -144,6 +144,24 @@ describe("founder console phase C adapters and gates", () => {
     const forced = collectEvidence({ demoFixtures: false, chatgptDispatchEnabled: true, openaiKey: "sk-test", openaiForcedOff: true });
     assert.equal(forced.find((item) => item.id === "chatgpt")?.freshness, "NOT_CONNECTED");
   });
+
+  it("retains Worker-bound connector credentials during evidence refresh", async () => {
+    const evidenceEnv = {
+      demoFixtures: false,
+      cursorToken: "server-only",
+      cursorAllowRepo: "TRCoach/TRCoaching",
+      cursorStartingRef: "cursor/tr-training-control-plane-fcd0",
+      openaiForcedOff: true,
+    };
+    const service = new ConsoleService(loadPermissions(), {
+      evidenceEnv,
+      evidence: collectEvidence({ demoFixtures: false }),
+    });
+    await service.refreshEvidence(async () => new Response("{}", { status: 200 }));
+    const cursor = service.evidenceCards.find((item) => item.id === "cursor");
+    assert.equal(cursor?.freshness, "UNKNOWN");
+    assert.match(cursor?.detail ?? "", /server-only Cursor token is present/);
+  });
 });
 
 describe("founder console phase C rehearsals", () => {
@@ -345,6 +363,24 @@ describe("founder console phase C rehearsals", () => {
     const verified = await cursor.status({ ...created.job, externalId: created.job.externalId, runId: created.job.runId });
     assert.equal(verified.status, "COMPLETED");
     assert.deepEqual(verified.tests, ["validate"]);
+  });
+
+  it("fail-closes a Cursor transport exception as an auditable blocked job", async () => {
+    const cursor = new CursorDispatch({
+      token: "server-only",
+      allowRepo: "TRCoach/TRCoaching",
+      startingRef: "cursor/tr-training-control-plane-fcd0",
+      autoCreatePR: false,
+      fetchImpl: async () => {
+        throw new Error("provider unavailable");
+      },
+    });
+    const store = new MemoryStore();
+    const result = await runCursorRehearsal(store, cursor);
+    assert.equal(result.ok, false);
+    assert.equal(result.job.status, "BLOCKED");
+    assert.match(result.job.resultSummary, /failed before verified provider acceptance/);
+    assert.deepEqual(result.job.blockers, ["cursor_dispatch_exception"]);
   });
 });
 

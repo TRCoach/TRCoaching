@@ -179,6 +179,7 @@ function createConsoleService(env: WorkerBindings, store: ConsoleStore, snapshot
   return new ConsoleService(permissions, {
     store,
     dispatch,
+    evidenceEnv,
     evidence: snapshot.evidenceCards.length ? snapshot.evidenceCards : collectEvidence(evidenceEnv),
   });
 }
