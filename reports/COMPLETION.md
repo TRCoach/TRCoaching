@@ -10,7 +10,7 @@ As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 —
 | --- | --- |
 | `npm ci` | pass |
 | `npm run build` | pass |
-| `npm test` | pass (26/26), including trusted-mode proofs: event `operating_mode` cannot bypass TEST; CONTROLLED_BETA Closed Won only via an injected trusted registry; refunds/credits follow the same rule |
+| `npm test` | pass (38/38), including trusted-mode proofs and Founder Console Phase A acceptance (A–E, config, spoof, no approve-all, status, API smoke, sensitive-key rejection) |
 | `npm run validate` | pass — 44 states, 57 transitions, all required fields present |
 | `npm run benchmark:social` | pass — local files only |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |

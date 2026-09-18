@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1b2a4a" />
+    <meta name="description" content="TR Training Founder Console — TEST / DEMO. Dry-run only." />
+    <title>TR Training Founder Console — TEST / DEMO</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to overview</a>
+    <header class="top">
+      <div class="brand">
+        <p class="kicker">TR Training · Founder Console</p>
+        <h1>Whole-company control plane</h1>
+      </div>
+      <p id="mode-badge" class="mode" role="status" aria-live="polite">MODE: TEST · DEMO</p>
+    </header>
+
+    <section class="command" aria-labelledby="command-heading">
+      <h2 id="command-heading">Universal command</h2>
+      <p>Instruction → classify → trusted mode → policy/permission/evidence → owner/system → bounded dry-run → audit. TEST never calls a provider.</p>
+      <form id="command-form">
+        <label for="command-input">Natural-language command</label>
+        <textarea id="command-input" name="command" rows="3" required placeholder="Progress all active leads as far as current permissions allow."></textarea>
+        <button type="submit">Run command</button>
+      </form>
+    </section>
+
+    <main id="main">
+      <section aria-labelledby="result-heading">
+        <h2 id="result-heading">Latest result</h2>
+        <pre id="result" class="result" tabindex="-1" aria-live="polite">Awaiting a command or action. TEST / DEMO — zero live writes.</pre>
+      </section>
+
+      <section aria-labelledby="overview-heading">
+        <h2 id="overview-heading">Exception-first overview</h2>
+        <p>Blocked and founder-required lanes appear first. Requested or pending work is never shown as completed.</p>
+        <div id="overview" class="grid"></div>
+      </section>
+
+      <section aria-labelledby="actions-heading">
+        <h2 id="actions-heading">Founder action cards</h2>
+        <p>All 17 actions route through the Control Plane service only.</p>
+        <div id="actions" class="cards"></div>
+      </section>
+
+      <section aria-labelledby="inbox-heading">
+        <h2 id="inbox-heading">Founder Decision Inbox</h2>
+        <p>Per-item Approve / Reject / Request more evidence. There is no approve-all.</p>
+        <div id="inbox" class="list"></div>
+      </section>
+
+      <section aria-labelledby="activity-heading">
+        <h2 id="activity-heading">Activity / audit</h2>
+        <div id="activity" class="list"></div>
+      </section>
+
+      <section aria-labelledby="status-heading">
+        <h2 id="status-heading">Worker and system status</h2>
+        <p>No credentials are displayed or stored.</p>
+        <div id="status" class="grid"></div>
+      </section>
+
+      <section aria-labelledby="usage-heading">
+        <h2 id="usage-heading">Usage / cost</h2>
+        <div id="usage" class="list"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Drive remains the business source of truth. Localhost-only preview. Dry-run adapters only. No paid hosting.</p>
+    </footer>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

@@ -20,4 +20,4 @@ No live Stripe activation/charges/refunds/credits/payment links. No paid spend. 
 - Duplicate event_id/idempotency key is ignored
 - Cancellation refund/credit routes to founder
 
-All connectors are dry-run. State transitions fail closed without required evidence.
+All connectors are dry-run. State transitions fail closed without required evidence. The Founder Console is TEST/DEMO only: it routes through the Control Plane service, ignores event `operating_mode`, never approve-alls, and never calls a provider.

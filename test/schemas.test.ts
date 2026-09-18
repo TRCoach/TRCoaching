@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fixtureFiles, readJson, validateAgainst } from "../src/schema.ts";
 import { coverage, loadLifecycle } from "../src/engine/state-engine.ts";
+import { loadFounderActions } from "../src/console/actions.ts";
 import { loadPermissions } from "../src/permissions.ts";
 
 describe("schemas and model", () => {
@@ -32,5 +33,7 @@ describe("schemas and model", () => {
     assert.ok(cov.transitions >= 30);
     const permissions = validateAgainst("permissions", loadPermissions());
     assert.equal(permissions.ok, true, permissions.errors.join("; "));
+    const founderActions = validateAgainst("founderActions", loadFounderActions());
+    assert.equal(founderActions.ok, true, founderActions.errors.join("; "));
   });
 });

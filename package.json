@@ -8,11 +8,15 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
     "test": "node --import tsx --test test/*.test.ts",
     "validate": "tsx src/cli.ts validate",
     "benchmark:social": "tsx src/cli.ts benchmark-social",
-    "qa:social": "tsx src/cli.ts qa-social"
+    "qa:social": "tsx src/cli.ts qa-social",
+    "console:dev": "tsc -p tsconfig.web.json && tsx src/console/http.ts",
+    "console:start": "node dist/console/http.js",
+    "console:build": "tsc -p tsconfig.json && tsc -p tsconfig.web.json",
+    "console:check": "tsc -p tsconfig.web.json && tsx src/console/check.ts"
   },
   "bin": {
     "tr-control": "./dist/cli.js"

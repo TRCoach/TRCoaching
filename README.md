@@ -15,7 +15,16 @@ npm test
 npm run validate
 npm run benchmark:social
 npm run qa:social
+npm run console:check
 ```
+
+Founder Console (TEST / DEMO, localhost only):
+
+```bash
+npm run console:dev
+```
+
+Open `http://127.0.0.1:8787`. See `docs/FOUNDER-CONSOLE-USAGE.md`.
 
 CLI:
 
@@ -54,5 +63,6 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 - Operating mode in this repo is `TEST` from `model/permissions.json` only. Event evidence cannot select or promote mode. Isolated tests may inject a trusted registry. `CONTROLLED_BETA` may accept paying founding clients after a named founder Stripe-live unlock without promoting the whole business to LIVE
 - Learning emits versioned SOP proposals only; agents cannot self-modify Drive policy
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
+- Founder Console Phase A is a localhost TEST/DEMO PWA over the Control Plane service. It does not call providers.
 
-See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), wake routing, and the phased beta plan. Bounded benchmark evidence is in `reports/COMPLETION.md` and `reports/benchmark-social.json`.
+See `AGENTS.md` and `docs/` for ownership, gates, Slack convention (`Grok_Alex:`), wake routing, the Founder Console, and the phased beta plan. Bounded evidence is in `reports/COMPLETION.md`, `reports/FOUNDER-CONSOLE-COMPLETION.md`, and `reports/benchmark-social.json`.

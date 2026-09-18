@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="TR TEST">
+  <rect width="64" height="64" fill="#1b2a4a"/>
+  <text x="32" y="38" text-anchor="middle" fill="#f6d38b" font-size="18" font-family="Georgia, serif">TR</text>
+  <text x="32" y="54" text-anchor="middle" fill="#fff" font-size="8" font-family="Georgia, serif">TEST</text>
+</svg>

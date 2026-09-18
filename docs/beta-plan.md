@@ -1,6 +1,6 @@
 # Phased beta-to-automation plan
 
-1. **Control plane (this repo)** — lifecycle, schemas, dry-run adapters, fail-closed engine, benchmark QA, learning proposals, TEST permission registry.
+1. **Control plane (this repo)** — lifecycle, schemas, dry-run adapters, fail-closed engine, benchmark QA, learning proposals, TEST permission registry, Phase A Founder Console (localhost TEST/DEMO).
 2. **Read-only pointers** — resolve Drive titles via env placeholders; Slack command parsing without writes.
 3. **CRM / Metricool reads** — stage and campaign refs only; still no publication and no paid spend.
 4. **Stripe test-mode reads** — payment_clear stays Sam; live Closed Won remains blocked.
