@@ -45,6 +45,14 @@ export const LANE_IDS = [
 export type LaneId = (typeof LANE_IDS)[number];
 export type LaneOutcome = "progressed" | "blocked" | "awaiting_external" | "founder_required";
 export type ActivityStatus = "requested" | "queued" | "scheduled" | "pending" | "published" | "completed";
+export type DispatchDisplayStatus =
+  | "QUEUED"
+  | "RUNNING"
+  | "AWAITING_EXTERNAL"
+  | "BLOCKED"
+  | "FOUNDER_REQUIRED"
+  | "COMPLETED"
+  | "FAILED";
 export type DecisionKind =
   | "stripe_unlock"
   | "refund_credit"
@@ -85,6 +93,10 @@ export interface LaneItem {
   owner: Owner;
   outcome: LaneOutcome;
   reason: string;
+  updatedAt?: string;
+  source?: string;
+  evidenceRefs?: string[];
+  nextAction?: string;
 }
 
 export interface LaneSnapshot {
@@ -120,6 +132,10 @@ export interface DecisionItem {
   createdAt: string;
   evidence: EvidenceMap;
   notes: string;
+  impact?: string;
+  expiry?: string;
+  nextTrigger?: string;
+  owner?: string;
 }
 
 export interface MarketingTask {

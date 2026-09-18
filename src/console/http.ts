@@ -6,6 +6,10 @@ import { repoRoot } from "../paths.js";
 import { assertNoSensitivePayload, forbiddenKeys } from "../sensitive.js";
 import { loadPermissions } from "../permissions.js";
 import { ConsoleService } from "./service.js";
+import { FounderAuth, parseCookies, sessionCookie, csrfCookie, clearCookies } from "./auth.js";
+import { MemoryStore, type ActionPreference } from "./store.js";
+import { collectEvidence, readEvidenceEnv } from "./evidence.js";
+import { DispatchEngine, LiveSlackTransport, MemorySlackTransport, CursorDispatch, ChatGptDispatch } from "./dispatch.js";
 import type { EvidenceMap } from "../types.js";
 import type { DecisionAct } from "./types.js";
 
@@ -24,7 +28,11 @@ export interface ConsoleServerOptions {
   host?: string;
   port?: number;
   service?: ConsoleService;
+  auth?: FounderAuth;
+  secureCookies?: boolean;
 }
+
+const PUBLIC_API = new Set(["/api/health", "/api/login", "/api/session"]);
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -44,15 +52,34 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function send(res: ServerResponse, status: number, body: unknown, type = "application/json; charset=utf-8"): void {
-  const payload =
-    typeof body === "string" || Buffer.isBuffer(body) ? body : `${JSON.stringify(body, null, 2)}\n`;
-  res.writeHead(status, {
-    "content-type": type,
+function securityHeaders(res: ServerResponse, extra: Record<string, string | string[]> = {}): void {
+  const headers: Record<string, string | string[]> = {
     "cache-control": "no-store",
+    "x-content-type-options": "nosniff",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "content-security-policy":
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
     "x-tr-console-mode": "TEST",
     "x-tr-external-write": "false",
-  });
+    ...extra,
+  };
+  for (const [key, value] of Object.entries(headers)) {
+    res.setHeader(key, value);
+  }
+}
+
+function send(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  type = "application/json; charset=utf-8",
+  extra: Record<string, string | string[]> = {},
+): void {
+  const payload =
+    typeof body === "string" || Buffer.isBuffer(body) ? body : `${JSON.stringify(body, null, 2)}\n`;
+  securityHeaders(res, { "content-type": type, ...extra });
+  res.statusCode = status;
   res.end(payload);
 }
 
@@ -68,14 +95,37 @@ function safeStatic(urlPath: string): string | undefined {
   return resolved;
 }
 
-export function handleConsoleRequest(service: ConsoleService, req: IncomingMessage, res: ServerResponse): Promise<void> {
-  return route(service, req, res);
+export function createDefaultRuntime(service?: ConsoleService) {
+  const store = service?.store ?? new MemoryStore();
+  const permissions = service?.permissions ?? loadPermissions();
+  const auth = new FounderAuth(store, FounderAuth.testing());
+  const env = readEvidenceEnv();
+  const slack =
+    env.slackDispatchEnabled && env.slackToken
+      ? new LiveSlackTransport(env.slackToken, env.slackChannel, true)
+      : new MemorySlackTransport();
+  const dispatch =
+    service?.dispatch ??
+    new DispatchEngine(store, permissions, slack, new CursorDispatch(env.cursorToken), new ChatGptDispatch(env.chatgptDispatchEnabled, env.openaiKey), collectEvidence(env));
+  const resolved = service ?? new ConsoleService(permissions, { store, dispatch, evidence: collectEvidence(env) });
+  return { auth, service: resolved, secureCookies: false };
 }
 
-async function route(service: ConsoleService, req: IncomingMessage, res: ServerResponse): Promise<void> {
+export function handleConsoleRequest(service: ConsoleService, req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const runtime = createDefaultRuntime(service);
+  return route(runtime.service, runtime.auth, runtime.secureCookies, req, res);
+}
+
+async function route(
+  service: ConsoleService,
+  auth: FounderAuth,
+  secureCookies: boolean,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   const host = (req.headers.host ?? "").split(":")[0];
-  if (host && host !== "127.0.0.1" && host !== "localhost") {
-    send(res, 403, { ok: false, reason: "Founder Console is localhost-only" });
+  if (host && host !== "127.0.0.1" && host !== "localhost" && process.env.FOUNDER_CONSOLE_ALLOW_REMOTE !== "1") {
+    send(res, 403, { ok: false, reason: "Founder Console is private; remote bind is not enabled" });
     return;
   }
 
@@ -85,7 +135,7 @@ async function route(service: ConsoleService, req: IncomingMessage, res: ServerR
 
   try {
     if (path.startsWith("/api/")) {
-      await api(service, method, path, req, res);
+      await api(service, auth, secureCookies, method, path, req, res);
       return;
     }
     const file = safeStatic(path);
@@ -105,12 +155,86 @@ async function route(service: ConsoleService, req: IncomingMessage, res: ServerR
   }
 }
 
-async function api(service: ConsoleService, method: string, path: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function api(
+  service: ConsoleService,
+  auth: FounderAuth,
+  secureCookies: boolean,
+  method: string,
+  path: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   if (method === "GET" && path === "/api/health") {
-    send(res, 200, { ok: true, mode: service.mode(), dryRun: true, externalWrites: 0, bind: "127.0.0.1" });
+    send(res, 200, { ok: true, mode: service.mode(), dryRun: true, externalWrites: 0, bind: "private" });
     return;
   }
-  if (method === "GET" && path === "/api/mode") {
+
+  const cookies = parseCookies(req.headers.cookie);
+  const session = auth.resolve(cookies.tr_session);
+
+  if (method === "GET" && path === "/api/session") {
+    send(res, 200, {
+      authenticated: Boolean(session),
+      csrf: session?.csrf,
+      expiresAt: session?.expiresAt,
+    });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/login") {
+    const raw = await readBody(req);
+    const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    if (forbiddenKeys(body).length > 0) {
+      send(res, 400, { ok: false, reason: `sensitive keys rejected: ${forbiddenKeys(body).join(", ")}` });
+      return;
+    }
+    const ip = req.socket.remoteAddress ?? "local";
+    const result = auth.login(String(body.username ?? ""), String(body.password ?? ""), ip);
+    if (!result.ok || !result.token || !result.session) {
+      send(res, result.status, { ok: false, reason: result.reason });
+      return;
+    }
+    send(res, 200, { ok: true, csrf: result.session.csrf, expiresAt: result.session.expiresAt }, undefined, {
+      "set-cookie": [sessionCookie(result.token, secureCookies), csrfCookie(result.session.csrf, secureCookies)],
+    });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/logout") {
+    auth.logout(cookies.tr_session);
+    send(res, 200, { ok: true }, undefined, { "set-cookie": clearCookies(secureCookies) });
+    return;
+  }
+
+  if (method === "POST" && path === "/api/inbox/approve-all") {
+    send(res, 404, { ok: false, reason: "approve-all does not exist" });
+    return;
+  }
+
+  if (method !== "GET") {
+    const raw = await peekSensitive(req, res);
+    if (raw === undefined) return;
+    if (!session) {
+      send(res, 401, { ok: false, reason: "founder authentication required" });
+      return;
+    }
+    if (!auth.assertCsrf(session, req.headers["x-csrf-token"] as string | undefined)) {
+      send(res, 403, { ok: false, reason: "csrf rejected" });
+      return;
+    }
+    const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    assertNoSensitivePayload(body, "request");
+    const { operating_mode: _ignored, ...safe } = body;
+    await mutate(service, method, path, safe, res);
+    return;
+  }
+
+  if (!session && !PUBLIC_API.has(path)) {
+    send(res, 401, { ok: false, reason: "founder authentication required" });
+    return;
+  }
+
+  if (path === "/api/mode") {
     send(res, 200, {
       mode: service.mode(),
       currentMode: service.permissions.currentMode,
@@ -120,57 +244,94 @@ async function api(service: ConsoleService, method: string, path: string, req: I
     });
     return;
   }
-  if (method === "GET" && path === "/api/overview") {
+  if (path === "/api/overview") {
     send(res, 200, service.snapshot());
     return;
   }
-  if (method === "GET" && path === "/api/actions") {
-    send(res, 200, service.catalog());
+  if (path === "/api/actions") {
+    send(res, 200, { actions: service.visibleActions(), catalog: service.catalog() });
     return;
   }
-  if (method === "GET" && path === "/api/inbox") {
+  if (path === "/api/inbox") {
     send(res, 200, { items: service.inbox(), approveAllAvailable: false });
     return;
   }
-  if (method === "GET" && path === "/api/activity") {
+  if (path === "/api/activity") {
     send(res, 200, { items: service.activity });
     return;
   }
-  if (method === "GET" && path === "/api/status") {
-    send(res, 200, { items: service.status(), credentialsExposed: false });
+  if (path === "/api/status") {
+    send(res, 200, { items: service.status(), evidence: service.evidenceCards, credentialsExposed: false });
     return;
   }
-  if (method === "GET" && path === "/api/usage") {
+  if (path === "/api/usage") {
     send(res, 200, service.usage());
     return;
   }
-  if (method === "POST" && path === "/api/inbox/approve-all") {
-    send(res, 404, { ok: false, reason: "approve-all does not exist" });
+  if (path === "/api/preferences") {
+    send(res, 200, { items: service.preferences() });
     return;
   }
+  const detail = path.match(/^\/api\/detail\/([a-z]+)\/([a-z0-9_-]+)$/);
+  if (detail?.[1] && detail[2]) {
+    send(res, 200, service.detail(detail[1], detail[2]));
+    return;
+  }
+  send(res, 404, { ok: false, reason: "not found" });
+}
 
+async function peekSensitive(req: IncomingMessage, res: ServerResponse): Promise<string | undefined> {
+  const raw = await readBody(req);
+  const body = raw ? (JSON.parse(raw || "{}") as Record<string, unknown>) : {};
+  const hits = forbiddenKeys(body);
+  if (hits.length > 0) {
+    send(res, 400, { ok: false, reason: `sensitive keys rejected: ${hits.join(", ")}`, externalWrites: 0 });
+    return undefined;
+  }
+  return raw;
+}
+
+async function mutate(
+  service: ConsoleService,
+  method: string,
+  path: string,
+  safe: Record<string, unknown>,
+  res: ServerResponse,
+): Promise<void> {
   if (method !== "POST") {
     send(res, 405, { ok: false, reason: "method not allowed" });
     return;
   }
-
-  const raw = await readBody(req);
-  const body = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-  const hits = forbiddenKeys(body);
-  if (hits.length > 0) {
-    send(res, 400, { ok: false, reason: `sensitive keys rejected: ${hits.join(", ")}`, externalWrites: 0 });
-    return;
-  }
-  assertNoSensitivePayload(body, "request");
-  const { operating_mode: _ignored, ...safe } = body;
-
   if (path === "/api/command") {
     const text = typeof safe.text === "string" ? safe.text : "";
+    if (/progress everything that can be progressed today/i.test(text)) {
+      send(res, 200, await service.progressEverythingAsync());
+      return;
+    }
     send(res, 200, service.runCommand(text, (safe.evidence as EvidenceMap | undefined) ?? {}));
+    return;
+  }
+  if (path === "/api/preferences") {
+    send(res, 200, { items: service.savePreferences((safe.items as ActionPreference[]) ?? []) });
+    return;
+  }
+  if (path === "/api/ops-status") {
+    const job = service.dispatch.ingestStatus({
+      kind: "OPS_STATUS",
+      event_id: String(safe.event_id ?? ""),
+      correlation_id: String(safe.correlation_id ?? ""),
+      status: (safe.status as "COMPLETED") ?? "AWAITING_EXTERNAL",
+      detail: String(safe.detail ?? ""),
+    });
+    send(res, job ? 200 : 404, { ok: Boolean(job), job });
     return;
   }
   const actionMatch = path.match(/^\/api\/actions\/([a-z0-9_]+)$/);
   if (actionMatch?.[1]) {
+    if (actionMatch[1] === "progress_everything_today") {
+      send(res, 200, await service.progressEverythingAsync());
+      return;
+    }
     send(res, 200, service.runAction(actionMatch[1], undefined, (safe.evidence as EvidenceMap | undefined) ?? {}));
     return;
   }
@@ -185,15 +346,27 @@ async function api(service: ConsoleService, method: string, path: string, req: I
 
 export function startConsoleServer(options: ConsoleServerOptions = {}) {
   const host = options.host ?? process.env.FOUNDER_CONSOLE_HOST ?? "127.0.0.1";
-  if (host !== "127.0.0.1" && host !== "localhost") {
-    throw new Error("Founder Console binds localhost only");
+  if (host !== "127.0.0.1" && host !== "localhost" && process.env.FOUNDER_CONSOLE_ALLOW_REMOTE !== "1") {
+    throw new Error("Founder Console binds localhost only unless FOUNDER_CONSOLE_ALLOW_REMOTE=1");
   }
   const port = options.port ?? Number(process.env.FOUNDER_CONSOLE_PORT ?? 8787);
-  const service = options.service ?? new ConsoleService(loadPermissions());
+  const runtime = options.service && options.auth
+    ? { service: options.service, auth: options.auth, secureCookies: options.secureCookies ?? false }
+    : createDefaultRuntime(options.service);
+  const auth = options.auth ?? runtime.auth;
+  const service = options.service ?? runtime.service;
+  const secureCookies = options.secureCookies ?? runtime.secureCookies;
   const server = createServer((req, res) => {
-    void route(service, req, res);
+    void route(service, auth, secureCookies, req, res);
   });
-  return new Promise<{ server: typeof server; host: string; port: number; url: string; service: ConsoleService }>((resolve, reject) => {
+  return new Promise<{
+    server: typeof server;
+    host: string;
+    port: number;
+    url: string;
+    service: ConsoleService;
+    auth: FounderAuth;
+  }>((resolve, reject) => {
     server.on("error", reject);
     server.listen(port, host, () => {
       const address = server.address();
@@ -204,12 +377,37 @@ export function startConsoleServer(options: ConsoleServerOptions = {}) {
         port: actualPort,
         url: `http://${host}:${actualPort}`,
         service,
+        auth,
       });
     });
   });
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  const started = await startConsoleServer();
-  process.stdout.write(`Founder Console TEST/DEMO ${started.url} (localhost only, dry-run, zero writes)\n`);
+  const { loadRuntimeConfig } = await import("./config.js");
+  const cfg = loadRuntimeConfig();
+  const env = readEvidenceEnv();
+  const slack = new LiveSlackTransport(env.slackToken, env.slackChannel, Boolean(env.slackDispatchEnabled));
+  const dispatch = new DispatchEngine(
+    cfg.store,
+    loadPermissions(),
+    slack,
+    new CursorDispatch(env.cursorToken),
+    new ChatGptDispatch(env.chatgptDispatchEnabled, env.openaiKey),
+    collectEvidence(env),
+  );
+  const service = new ConsoleService(loadPermissions(), {
+    store: cfg.store,
+    dispatch,
+    evidence: collectEvidence(env),
+  });
+  const auth = new FounderAuth(cfg.store, cfg.auth);
+  const started = await startConsoleServer({
+    host: cfg.host,
+    port: cfg.port,
+    service,
+    auth,
+    secureCookies: cfg.auth.secureCookies,
+  });
+  process.stdout.write(`Founder Console ${started.url} (authenticated, private, dry-run)\n`);
 }

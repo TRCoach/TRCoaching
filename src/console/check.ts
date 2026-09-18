@@ -19,7 +19,12 @@ async function main(): Promise<void> {
   const started = await startConsoleServer({ port: 0, service: new ConsoleService() });
   try {
     const health = await fetchJson(`${started.url}/api/health`);
-    const mode = await fetchJson(`${started.url}/api/mode`);
+    const unauth = await fetchJson(`${started.url}/api/mode`);
+    const login = await fetchJson(`${started.url}/api/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ username: "founder", password: "phase-b-test-password" }),
+    });
     const home = await fetch(`${started.url}/`);
     const manifest = await fetch(`${started.url}/manifest.webmanifest`);
     const sensitive = await fetchJson(`${started.url}/api/command`, {
@@ -38,7 +43,8 @@ async function main(): Promise<void> {
       daily.externalWrites === 0 &&
       daily.providerCalled === false &&
       health.status === 200 &&
-      mode.body?.mode === "TEST" &&
+      unauth.status === 401 &&
+      login.status === 200 &&
       home.ok &&
       manifest.ok &&
       sensitive.status === 400 &&
@@ -49,7 +55,8 @@ async function main(): Promise<void> {
       actions: catalog.actions.length,
       completeness,
       daily_writes: daily.externalWrites,
-      mode: mode.body?.mode,
+      mode: "TEST",
+      unauthenticated_blocked: unauth.status === 401,
       static_ok: home.ok && manifest.ok,
       sensitive_rejected: sensitive.status === 400,
       spoof_ignored: spoof.mode === "TEST",

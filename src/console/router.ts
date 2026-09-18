@@ -8,6 +8,7 @@ export const EXACT_PROMPTS = {
   progress_paid:
     "Progress every paid client through onboarding and coaching as far as current permissions allow.",
   refund: "Refund this client.",
+  progress_today: "Progress everything that can be progressed today.",
 } as const;
 
 export function normalizePrompt(text: string): string {
@@ -34,6 +35,7 @@ const EXACT_MAP: Record<string, string[]> = {
     "review_coaching_clients",
   ],
   [normalizePrompt(EXACT_PROMPTS.refund)]: ["refund_this_client"],
+  [normalizePrompt(EXACT_PROMPTS.progress_today)]: ["progress_everything_today"],
 };
 
 export function classifyCommand(text: string): CommandClassification {
@@ -82,6 +84,9 @@ export function classifyCommand(text: string): CommandClassification {
   }
   if (/publication error/.test(normalized)) hits.push("check_publication_errors");
   if (/founder decision/.test(normalized)) hits.push("show_founder_decisions");
+  if (/progress everything that can be progressed today/.test(normalized)) {
+    hits.push("progress_everything_today");
+  }
 
   const unique = [...new Set(hits)];
   if (unique.length === 1) {

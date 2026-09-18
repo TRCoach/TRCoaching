@@ -1,7 +1,7 @@
 {
-  "name": "TR Training Founder Console TEST",
-  "short_name": "TR Console TEST",
-  "description": "TEST / DEMO Founder Console. Dry-run only. Localhost preview.",
+  "name": "TR Training Founder Console",
+  "short_name": "TR Founder",
+  "description": "Authenticated founder console. TEST mode. No anonymous access.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f1e8",

@@ -6,6 +6,7 @@ import { EXACT_PROMPTS, classifyCommand, normalizePrompt } from "../src/console/
 import { ConsoleService } from "../src/console/service.ts";
 import { FOUNDER_ACTION_TITLES, REQUIRED_ACTION_FIELDS } from "../src/console/types.ts";
 import { loadPermissions, withTrustedMode } from "../src/permissions.ts";
+import { authHeaders, loginFounder } from "./console-auth.ts";
 
 describe("founder console phase A", () => {
   it("has a complete 17-action config with required fields", () => {
@@ -183,12 +184,18 @@ describe("founder console HTTP smoke", () => {
 
   it("serves API, static shell, rejects secrets, and refuses approve-all", async () => {
     const started = await runtime;
-    const mode = await (await fetch(`${started.url}/api/mode`)).json();
+    const denied = await fetch(`${started.url}/api/mode`);
+    assert.equal(denied.status, 401);
+    const session = await loginFounder(started.url);
+    assert.equal(session.status, 200);
+    const mode = await (
+      await fetch(`${started.url}/api/mode`, { headers: { cookie: session.cookie } })
+    ).json();
     assert.equal(mode.mode, "TEST");
     assert.equal(mode.eventPayloadCannotPromoteMode, true);
     const home = await fetch(`${started.url}/`);
     assert.equal(home.ok, true);
-    assert.match(await home.text(), /TEST \/ DEMO/);
+    assert.match(await home.text(), /TEST/);
     const manifest = await fetch(`${started.url}/manifest.webmanifest`);
     assert.equal(manifest.ok, true);
     const sensitive = await fetch(`${started.url}/api/command`, {
@@ -203,16 +210,20 @@ describe("founder console HTTP smoke", () => {
     assert.equal(approveAll.status, 404);
     const daily = await fetch(`${started.url}/api/actions/run_daily_business_cycle`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: authHeaders(session),
       body: JSON.stringify({ operating_mode: "CONTROLLED_BETA" }),
     });
     const dailyBody = await daily.json();
     assert.equal(dailyBody.mode, "TEST");
     assert.equal(dailyBody.externalWrites, 0);
-    const usage = await (await fetch(`${started.url}/api/usage`)).json();
+    const usage = await (
+      await fetch(`${started.url}/api/usage`, { headers: { cookie: session.cookie } })
+    ).json();
     assert.equal(usage.estimatedCostUsd, null);
     assert.equal(usage.costStatus, "unknown");
-    const status = await (await fetch(`${started.url}/api/status`)).json();
+    const status = await (
+      await fetch(`${started.url}/api/status`, { headers: { cookie: session.cookie } })
+    ).json();
     assert.equal(status.credentialsExposed, false);
     assert.ok(status.items.every((item: { credentialsExposed: boolean }) => item.credentialsExposed === false));
   });

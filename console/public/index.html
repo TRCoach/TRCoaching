@@ -3,77 +3,117 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#1b2a4a" />
-    <meta name="description" content="TR Training Founder Console — TEST / DEMO. Dry-run only." />
-    <title>TR Training Founder Console — TEST / DEMO</title>
+    <meta name="theme-color" content="#0b0d10" />
+    <meta name="description" content="TR Training Founder Console — authenticated TEST product. Dry-run unless dispatch is explicitly enabled." />
+    <title>TR Training Founder Console</title>
     <link rel="stylesheet" href="/styles.css" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
   </head>
   <body>
     <a class="skip" href="#main">Skip to overview</a>
-    <header class="top">
-      <div class="brand">
-        <p class="kicker">TR Training · Founder Console</p>
-        <h1>Whole-company control plane</h1>
-      </div>
-      <p id="mode-badge" class="mode" role="status" aria-live="polite">MODE: TEST · DEMO</p>
-    </header>
 
-    <section class="command" aria-labelledby="command-heading">
-      <h2 id="command-heading">Universal command</h2>
-      <p>Instruction → classify → trusted mode → policy/permission/evidence → owner/system → bounded dry-run → audit. TEST never calls a provider.</p>
-      <form id="command-form">
-        <label for="command-input">Natural-language command</label>
-        <textarea id="command-input" name="command" rows="3" required placeholder="Progress all active leads as far as current permissions allow."></textarea>
-        <button type="submit">Run command</button>
-      </form>
+    <section id="login-view" class="login-shell" hidden>
+      <div class="login-card">
+        <p class="eyebrow">TR Training</p>
+        <h1>Founder Console</h1>
+        <p class="lede">Founder-only. No anonymous access. TEST actions never move money or publish.</p>
+        <form id="login-form">
+          <label for="username">Username</label>
+          <input id="username" name="username" autocomplete="username" required />
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <button type="submit">Enter console</button>
+          <p id="login-error" class="error" role="alert"></p>
+        </form>
+        <p class="install-note">Install: in Chromium use Install app from the address bar. iOS: Share → Add to Home Screen. Local preview needs <code>FOUNDER_CONSOLE_DEV_AUTH=1</code>.</p>
+      </div>
     </section>
 
-    <main id="main">
-      <section aria-labelledby="result-heading">
-        <h2 id="result-heading">Latest result</h2>
-        <pre id="result" class="result" tabindex="-1" aria-live="polite">Awaiting a command or action. TEST / DEMO — zero live writes.</pre>
+    <div id="app-view" hidden>
+      <header class="top">
+        <div>
+          <p class="eyebrow">TR Training · Founder Console</p>
+          <h1>Exception-first control</h1>
+        </div>
+        <div class="top-meta">
+          <p id="mode-badge" class="mode" role="status">MODE: TEST</p>
+          <button type="button" id="logout" class="ghost">Log out</button>
+        </div>
+      </header>
+
+      <section class="command" aria-labelledby="command-heading">
+        <h2 id="command-heading">Command</h2>
+        <p>Decompose → trusted mode → evidence → dispatch → verified read-back. Founder never copies prompts between tools.</p>
+        <form id="command-form">
+          <label for="command-input">Natural-language command</label>
+          <textarea id="command-input" rows="3" required placeholder="Progress everything that can be progressed today."></textarea>
+          <button type="submit">Dispatch command</button>
+        </form>
       </section>
 
-      <section aria-labelledby="overview-heading">
-        <h2 id="overview-heading">Exception-first overview</h2>
-        <p>Blocked and founder-required lanes appear first. Requested or pending work is never shown as completed.</p>
-        <div id="overview" class="grid"></div>
-      </section>
+      <main id="main">
+        <section aria-labelledby="result-heading">
+          <h2 id="result-heading">Latest result</h2>
+          <article id="result" class="result" tabindex="-1" aria-live="polite">Awaiting an authenticated command.</article>
+        </section>
 
-      <section aria-labelledby="actions-heading">
-        <h2 id="actions-heading">Founder action cards</h2>
-        <p>All 17 actions route through the Control Plane service only.</p>
-        <div id="actions" class="cards"></div>
-      </section>
+        <section aria-labelledby="overview-heading">
+          <h2 id="overview-heading">Exception-first lanes</h2>
+          <div id="overview" class="grid"></div>
+        </section>
 
-      <section aria-labelledby="inbox-heading">
-        <h2 id="inbox-heading">Founder Decision Inbox</h2>
-        <p>Per-item Approve / Reject / Request more evidence. There is no approve-all.</p>
-        <div id="inbox" class="list"></div>
-      </section>
+        <section aria-labelledby="actions-heading">
+          <div class="section-head">
+            <h2 id="actions-heading">Founder actions</h2>
+            <button type="button" id="customize" class="ghost">Customize home</button>
+          </div>
+          <div id="actions" class="cards"></div>
+        </section>
 
-      <section aria-labelledby="activity-heading">
-        <h2 id="activity-heading">Activity / audit</h2>
-        <div id="activity" class="list"></div>
-      </section>
+        <section aria-labelledby="inbox-heading">
+          <h2 id="inbox-heading">Decision inbox</h2>
+          <div id="inbox" class="list"></div>
+        </section>
 
-      <section aria-labelledby="status-heading">
-        <h2 id="status-heading">Worker and system status</h2>
-        <p>No credentials are displayed or stored.</p>
-        <div id="status" class="grid"></div>
-      </section>
+        <section aria-labelledby="jobs-heading">
+          <h2 id="jobs-heading">Dispatch jobs</h2>
+          <div id="jobs" class="list"></div>
+        </section>
 
-      <section aria-labelledby="usage-heading">
-        <h2 id="usage-heading">Usage / cost</h2>
-        <div id="usage" class="list"></div>
-      </section>
-    </main>
+        <section aria-labelledby="activity-heading">
+          <h2 id="activity-heading">Audit</h2>
+          <div id="activity" class="list"></div>
+        </section>
 
-    <footer>
-      <p>Drive remains the business source of truth. Localhost-only preview. Dry-run adapters only. No paid hosting.</p>
-    </footer>
+        <section aria-labelledby="status-heading">
+          <h2 id="status-heading">Connectors</h2>
+          <div id="status" class="grid"></div>
+        </section>
+
+        <section aria-labelledby="usage-heading">
+          <h2 id="usage-heading">Usage</h2>
+          <div id="usage" class="list"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="drawer" class="drawer">
+      <form method="dialog">
+        <button type="submit" class="ghost">Close</button>
+      </form>
+      <div id="drawer-body"></div>
+    </dialog>
+
+    <dialog id="prefs" class="drawer">
+      <form method="dialog"><button type="submit" class="ghost">Close</button></form>
+      <h2>Home customization</h2>
+      <p>Visibility, order, label, icon and confirm only. Permissions and gates stay in the catalog.</p>
+      <div id="prefs-body"></div>
+      <button type="button" id="save-prefs">Save layout</button>
+    </dialog>
+
     <script type="module" src="/app.js"></script>
   </body>
 </html>

@@ -84,7 +84,7 @@ npm run qa:social
 npm run console:check
 ```
 
-Founder Console preview (localhost only, no long-running service in the Cloud environment): `npm run console:dev` → `http://127.0.0.1:8787`.
+Founder Console preview (localhost only, no long-running service in the Cloud environment): `FOUNDER_CONSOLE_DEV_AUTH=1 FOUNDER_DEV_PASSWORD=… npm run console:dev` → `http://127.0.0.1:8787`.
 
 CI runs `build`, `test`, and `validate` with no secrets.
 

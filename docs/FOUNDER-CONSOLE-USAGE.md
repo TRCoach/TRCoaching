@@ -5,10 +5,10 @@ Requires Node.js 22. Preview is **localhost only**.
 ```bash
 npm ci
 npm run build
-npm run console:dev
+FOUNDER_CONSOLE_DEV_AUTH=1 FOUNDER_DEV_PASSWORD='local-only' npm run console:dev
 ```
 
-Open [http://127.0.0.1:8787](http://127.0.0.1:8787). The page is labelled **TEST / DEMO**. Do not expose the port.
+Open [http://127.0.0.1:8787](http://127.0.0.1:8787) and sign in as `founder`. Phase B is founder-only. Do not expose the port.
 
 Production-style local start after build:
 

@@ -8,6 +8,9 @@ import type { EvidenceMap, SystemOfRecord } from "../types.js";
 import { getAction, loadFounderActions } from "./actions.js";
 import { seedDecisions, seedLaneItems } from "./demo-state.js";
 import { classifyCommand } from "./router.js";
+import { MemoryStore, type ActionPreference, type ConsoleStore } from "./store.js";
+import { collectEvidence, type EvidenceCard } from "./evidence.js";
+import { DispatchEngine, MemorySlackTransport, type DispatchSummary } from "./dispatch.js";
 import {
   LANE_IDS,
   type ActionResult,
@@ -74,8 +77,17 @@ function inspectAdapter(system: SystemOfRecord, action: string, evidence: Eviden
   return result;
 }
 
+export interface ConsoleServiceOptions {
+  store?: ConsoleStore;
+  evidence?: EvidenceCard[];
+  dispatch?: DispatchEngine;
+}
+
 export class ConsoleService {
   readonly permissions: PermissionRegistry;
+  readonly store: ConsoleStore;
+  readonly dispatch: DispatchEngine;
+  readonly evidenceCards: EvidenceCard[];
   readonly startedAt = Date.now();
   items: LaneItem[];
   decisions: DecisionItem[];
@@ -83,11 +95,32 @@ export class ConsoleService {
   jobs = 0;
   retries = 0;
   lastRuntimeMs = 0;
+  lastDispatch?: DispatchSummary;
 
-  constructor(permissions: PermissionRegistry = loadPermissions()) {
+  constructor(
+    permissions: PermissionRegistry = loadPermissions(),
+    options: ConsoleServiceOptions = {},
+  ) {
     this.permissions = permissions;
-    this.items = seedLaneItems();
-    this.decisions = seedDecisions(nowIso());
+    this.store = options.store ?? new MemoryStore();
+    this.evidenceCards = options.evidence ?? collectEvidence();
+    this.dispatch =
+      options.dispatch ??
+      DispatchEngine.forTests(this.store, permissions, new MemorySlackTransport());
+    this.items = seedLaneItems().map((item) => ({
+      ...item,
+      updatedAt: nowIso(),
+      source: "control_plane",
+      evidenceRefs: [item.ref],
+      nextAction: item.outcome === "founder_required" ? "founder_decision" : "inspect",
+    }));
+    this.decisions = seedDecisions(nowIso()).map((item) => ({
+      ...item,
+      owner: "Founder",
+      impact: "TEST simulation only — no provider mutation.",
+      expiry: "until founder acts",
+      nextTrigger: "approve_or_reject_or_request_evidence",
+    }));
   }
 
   mode(): OperatingMode {
@@ -143,17 +176,25 @@ export class ConsoleService {
   }
 
   status(): WorkerStatus[] {
+    const cards = this.evidenceCards;
+    const card = (id: string) => cards.find((item) => item.id === id);
+    const reach = (id: string): WorkerStatus["reachability"] => {
+      const freshness = card(id)?.freshness;
+      if (freshness === "NOT_CONNECTED") return "not_connected";
+      if (freshness === "DEMO_FIXTURE") return "dry-run";
+      return "not_connected";
+    };
     return [
-      { id: "chatgpt", label: "ChatGPT", role: "Operational manager / independent QA", reachability: "not_connected", credentialsExposed: false, detail: "Policy and PASS only. No credentials stored." },
-      { id: "cursor", label: "Cursor", role: "Repeatable worker", reachability: "localhost_only", credentialsExposed: false, detail: "This console process. No provider credentials." },
-      { id: "grok_alex", label: "Grok / Alex", role: "Routing and blockers", reachability: "not_connected", credentialsExposed: false, detail: "Prefix Grok_Alex: when a blocker needs Alex." },
+      { id: "chatgpt", label: "ChatGPT", role: "Operational manager / independent QA", reachability: reach("chatgpt"), credentialsExposed: false, detail: card("chatgpt")?.detail ?? "NOT_CONNECTED" },
+      { id: "cursor", label: "Cursor", role: "Repeatable worker", reachability: reach("cursor"), credentialsExposed: false, detail: card("cursor")?.detail ?? "NOT_CONNECTED" },
+      { id: "grok_alex", label: "Grok / Alex", role: "Routing and blockers", reachability: reach("slack"), credentialsExposed: false, detail: "Prefix Grok_Alex: OPS_EVENT only. No freeform Slack." },
       { id: "browser_operator", label: "Browser operator", role: "Authenticated clicks when authorised", reachability: "not_connected", credentialsExposed: false, detail: "Grok Bot only when separately authorised." },
-      { id: "metricool", label: "Metricool", role: "Social scheduling/analytics", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("Metricool", "dry_run.ping", {}).detail },
-      { id: "stripe", label: "Stripe", role: "Payment truth", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("Stripe", "dry_run.ping", {}).detail },
-      { id: "superset", label: "Superset", role: "Coaching/delivery truth", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("Superset", "dry_run.ping", {}).detail },
-      { id: "crm", label: "CRM", role: "Lead/commercial state", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("CRM", "dry_run.ping", {}).detail },
-      { id: "drive", label: "Drive", role: "Policy/knowledge SoT", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("Drive", "dry_run.ping", {}).detail },
-      { id: "slack", label: "Slack", role: "Event/command bus", reachability: "dry-run", credentialsExposed: false, detail: inspectAdapter("Slack", "dry_run.ping", {}).detail },
+      { id: "metricool", label: "Metricool", role: "Social scheduling/analytics", reachability: reach("metricool"), credentialsExposed: false, detail: card("metricool")?.detail ?? inspectAdapter("Metricool", "dry_run.ping", {}).detail },
+      { id: "stripe", label: "Stripe", role: "Payment truth", reachability: reach("stripe"), credentialsExposed: false, detail: card("stripe")?.detail ?? inspectAdapter("Stripe", "dry_run.ping", {}).detail },
+      { id: "superset", label: "Superset", role: "Coaching/delivery truth", reachability: reach("superset"), credentialsExposed: false, detail: card("superset")?.detail ?? inspectAdapter("Superset", "dry_run.ping", {}).detail },
+      { id: "crm", label: "CRM", role: "Lead/commercial state", reachability: reach("crm"), credentialsExposed: false, detail: card("crm")?.detail ?? inspectAdapter("CRM", "dry_run.ping", {}).detail },
+      { id: "drive", label: "Drive", role: "Policy/knowledge SoT", reachability: reach("drive"), credentialsExposed: false, detail: card("drive")?.detail ?? inspectAdapter("Drive", "dry_run.ping", {}).detail },
+      { id: "slack", label: "Slack", role: "Event/command bus", reachability: reach("slack"), credentialsExposed: false, detail: card("slack")?.detail ?? inspectAdapter("Slack", "dry_run.ping", {}).detail },
     ];
   }
 
@@ -187,11 +228,15 @@ export class ConsoleService {
       lifecycle: { id: loadLifecycle().id, states: loadLifecycle().states.length },
       exceptionFirst,
       lanes,
-      actions: this.catalog().actions,
+      actions: this.visibleActions(),
       inbox: this.inbox(),
       activity: this.activity,
       status: this.status(),
       usage: this.usage(),
+      evidence: this.evidenceCards,
+      jobs: this.store.load().jobs,
+      preferences: this.preferences(),
+      lastDispatch: this.lastDispatch,
       approveAllAvailable: false,
       externalWrites: 0,
     };
@@ -271,11 +316,16 @@ export class ConsoleService {
       this.lastRuntimeMs += Date.now() - started;
       return result;
     }
+    if (actionId === "progress_everything_today") {
+      const result = this.progressEverything(correlationId);
+      this.lastRuntimeMs += Date.now() - started;
+      return result;
+    }
     const config = getAction(actionId);
     if (!config) {
       return this.fail(actionId, "Unknown action", correlationId, mode, "unknown action fails closed");
     }
-    const result = this.dispatch(config, correlationId, evidence, mode);
+    const result = this.dispatchAction(config, correlationId, evidence, mode);
     this.lastRuntimeMs += Date.now() - started;
     return result;
   }
@@ -298,7 +348,7 @@ export class ConsoleService {
     };
   }
 
-  private dispatch(config: FounderActionConfig, correlationId: string, evidence: EvidenceMap, mode: OperatingMode): ActionResult {
+  private dispatchAction(config: FounderActionConfig, correlationId: string, evidence: EvidenceMap, mode: OperatingMode): ActionResult {
     switch (config.id) {
       case "run_daily_business_cycle":
         return this.dailyCycle(config, correlationId, mode);
@@ -740,5 +790,168 @@ export class ConsoleService {
         .filter((item) => item.outcome !== "progressed")
         .map((item) => ({ ref: item.ref, owner: item.owner, reason: item.reason, outcome: item.outcome })),
     );
+  }
+
+  preferences(): ActionPreference[] {
+    const stored = this.store.load().preferences;
+    return this.catalog().actions.map((action, index) => {
+      const pref = stored.find((item) => item.id === action.id);
+      return {
+        id: action.id,
+        visible: pref?.visible ?? true,
+        order: pref?.order ?? index,
+        displayName: pref?.displayName ?? action.title,
+        icon: pref?.icon ?? "◆",
+        description: pref?.description ?? action.success,
+        confirm: pref?.confirm ?? action.founderGate,
+      };
+    });
+  }
+
+  savePreferences(next: ActionPreference[]): ActionPreference[] {
+    const catalogIds = new Set(this.catalog().actions.map((item) => item.id));
+    const clean = next.filter((item) => catalogIds.has(item.id)).map((item) => ({
+      id: item.id,
+      visible: item.visible,
+      order: item.order,
+      displayName: item.displayName,
+      icon: item.icon,
+      description: item.description,
+      confirm: item.confirm,
+    }));
+    this.store.exclusive((data) => {
+      data.preferences = clean;
+    });
+    return this.preferences();
+  }
+
+  visibleActions() {
+    const prefs = this.preferences();
+    return this.catalog()
+      .actions.map((action) => {
+        const pref = prefs.find((item) => item.id === action.id)!;
+        return { ...action, title: pref.displayName, _pref: pref };
+      })
+      .filter((action) => action._pref.visible)
+      .sort((a, b) => a._pref.order - b._pref.order);
+  }
+
+  detail(kind: string, id: string) {
+    if (kind === "lane") {
+      const lane = this.overview().lanes.find((item) => item.id === id);
+      return {
+        kind,
+        id,
+        title: lane?.title,
+        owner: lane?.owner,
+        state: lane?.outcome,
+        blockers: lane?.items.filter((item) => item.outcome !== "progressed"),
+        evidence: lane?.items,
+        source: "control_plane",
+        timestamps: { updatedAt: nowIso() },
+        related: this.activity.filter((item) => item.summary.includes(id)).slice(0, 5),
+        nextAction: lane?.outcome === "founder_required" ? "open_decision" : "run_related_action",
+      };
+    }
+    if (kind === "decision") {
+      const item = this.decisions.find((row) => row.id === id);
+      return {
+        kind,
+        id,
+        title: item?.title,
+        owner: item?.owner ?? "Founder",
+        state: item?.status,
+        request: item?.notes,
+        evidence: item?.evidence,
+        impact: item?.impact,
+        expiry: item?.expiry,
+        nextTrigger: item?.nextTrigger,
+        audit: this.activity.filter((row) => row.summary.includes(item?.subjectRef ?? id)),
+        nextAction: "approve_or_reject_or_request_evidence",
+      };
+    }
+    if (kind === "activity") {
+      const item = this.activity.find((row) => row.id === id);
+      return {
+        kind,
+        id,
+        title: item?.title,
+        owner: item?.owner,
+        state: item?.status,
+        evidence: { correlationId: item?.correlationId, auditType: item?.auditType },
+        source: item?.system,
+        timestamps: { requestedAt: item?.requestedAt },
+        nextAction: item?.status === "requested" || item?.status === "pending" ? "wait" : "inspect",
+      };
+    }
+    if (kind === "job") {
+      const job = this.store.load().jobs.find((row) => row.id === id);
+      return {
+        kind,
+        id,
+        title: job?.title,
+        owner: job?.owner,
+        state: job?.status,
+        evidence: job,
+        source: job?.executor,
+        nextAction: job?.founderGate ? "founder_decision" : "collect_status",
+      };
+    }
+    if (kind === "action") {
+      const action = this.catalog().actions.find((row) => row.id === id);
+      return {
+        kind,
+        id,
+        title: action?.title,
+        owner: action?.owner,
+        state: action?.workflowId,
+        evidence: action,
+        nextAction: action?.id,
+        note: "Customization never changes permissions or gates.",
+      };
+    }
+    return { kind, id, state: "UNKNOWN", nextAction: "none" };
+  }
+
+  progressEverything(correlationId = newId("corr")): ActionResult {
+    const summary = this.lastDispatch;
+    return this.wrapProgress(correlationId, summary);
+  }
+
+  async progressEverythingAsync(): Promise<ActionResult> {
+    const dispatched = await this.dispatch.progressToday();
+    this.lastDispatch = dispatched;
+    this.jobs += dispatched.decomposition.length;
+    this.audit(
+      dispatched.correlationId,
+      "Progress everything that can be progressed today",
+      "completed",
+      "Founder",
+      "control_plane",
+      dispatched.founderFriendlySummary,
+      "progress_today",
+      "progress_everything_today",
+    );
+    return this.wrapProgress(dispatched.correlationId, dispatched);
+  }
+
+  private wrapProgress(correlationId: string, dispatched?: DispatchSummary): ActionResult {
+    const mode = this.mode();
+    const summary =
+      dispatched?.founderFriendlySummary ??
+      "Dispatch not yet collected. Run progressEverythingAsync from the HTTP layer.";
+    return {
+      ok: true,
+      actionId: "progress_everything_today",
+      title: "Progress everything that can be progressed today",
+      correlationId: dispatched?.correlationId ?? correlationId,
+      mode,
+      trustedModeSource: "permission_registry",
+      founderFriendlySummary: summary,
+      activity: this.activity.filter((item) => item.correlationId === (dispatched?.correlationId ?? correlationId)),
+      externalWrites: 0,
+      dryRun: true,
+      providerCalled: false,
+    };
   }
 }

@@ -10,7 +10,7 @@ As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 —
 | --- | --- |
 | `npm ci` | pass |
 | `npm run build` | pass |
-| `npm test` | pass (38/38), including trusted-mode proofs and Founder Console Phase A acceptance (A–E, config, spoof, no approve-all, status, API smoke, sensitive-key rejection) |
+| `npm test` | pass (47/47), including Phase A A–E and Phase B auth/dispatch/persistence proofs |
 | `npm run validate` | pass — 44 states, 57 transitions, all required fields present |
 | `npm run benchmark:social` | pass — local files only |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |
