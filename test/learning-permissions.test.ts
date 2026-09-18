@@ -1,12 +1,56 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { event } from "../src/events.ts";
-import { loadLifecycle, StateEngine } from "../src/engine/state-engine.ts";
+import { emptyState, loadLifecycle, StateEngine } from "../src/engine/state-engine.ts";
 import { wakeFor } from "../src/engine/wake.ts";
-import { loadPermissions, permissionAllowed } from "../src/permissions.ts";
+import {
+  loadPermissions,
+  permissionAllowed,
+  resolveMode,
+  withTrustedMode,
+  type PermissionRegistry,
+} from "../src/permissions.ts";
 
-function engine() {
-  return new StateEngine(loadLifecycle());
+function engine(permissions?: PermissionRegistry) {
+  const model = loadLifecycle();
+  return new StateEngine(model, emptyState(model), permissions ?? loadPermissions());
+}
+
+function walkToPaymentVerified(target: StateEngine) {
+  const start = [
+    event("start_marketing", "Taylor", { campaign_ref: "CAMP-PAY-1" }),
+    event("social_enquiry", "Taylor", {
+      enquiry_channel: "instagram",
+      enquiry_received_at: "2026-09-18T10:00:00Z",
+      non_pii_enquiry_ref: "ENQ-PAY-1",
+    }),
+    event("classify_enquiry", "Taylor", {
+      non_pii_enquiry_ref: "ENQ-PAY-1",
+      classification_label: "coaching_enquiry",
+    }),
+    event("qualify_lead", "Sam", {
+      non_pii_enquiry_ref: "ENQ-PAY-1",
+      qualification_outcome: "qualified",
+    }),
+    event("present_offer", "Sam", { offer_id: "OFF-PAY-1", offer_version: "v1" }),
+    event("payment_intent_recorded", "Sam", {
+      offer_id: "OFF-PAY-1",
+      stripe_payment_ref: "pi_test_pay",
+      stripe_livemode: true,
+    }),
+    event("payment_cleared", "Sam", {
+      stripe_payment_ref: "pi_test_pay",
+      stripe_livemode: true,
+      stripe_status: "succeeded",
+      payment_clear_owner: "Sam",
+    }),
+  ];
+  for (const item of start) {
+    const result = target.apply(item);
+    if (result.status !== "applied") {
+      throw new Error(`${item.type}: ${result.reason}`);
+    }
+  }
 }
 
 describe("continuous learning and permissions", () => {
@@ -201,54 +245,14 @@ describe("continuous learning and permissions", () => {
     assert.equal(permissionAllowed(registry, "refunds_credits", "LIVE", decision).ok, true);
   });
 
-  it("rejects live Closed Won in TEST even with founder payment unlock evidence", () => {
+  it("ignores event evidence.operating_mode and keeps trusted TEST mode", () => {
+    const registry = loadPermissions();
+    assert.equal(registry.currentMode, "TEST");
+    assert.equal(resolveMode(registry), "TEST");
     const target = engine();
-    const start = [
-      event("start_marketing", "Taylor", { campaign_ref: "CAMP-PAY-1" }),
-      event("social_enquiry", "Taylor", {
-        enquiry_channel: "instagram",
-        enquiry_received_at: "2026-09-18T10:00:00Z",
-        non_pii_enquiry_ref: "ENQ-PAY-1",
-      }),
-      event("classify_enquiry", "Taylor", {
-        non_pii_enquiry_ref: "ENQ-PAY-1",
-        classification_label: "coaching_enquiry",
-      }),
-      event("qualify_lead", "Sam", {
-        non_pii_enquiry_ref: "ENQ-PAY-1",
-        qualification_outcome: "qualified",
-      }),
-      event("present_offer", "Sam", { offer_id: "OFF-PAY-1", offer_version: "v1" }),
-      event("payment_intent_recorded", "Sam", {
-        offer_id: "OFF-PAY-1",
-        stripe_payment_ref: "pi_test_pay",
-        stripe_livemode: true,
-      }),
-      event("payment_cleared", "Sam", {
-        stripe_payment_ref: "pi_test_pay",
-        stripe_livemode: true,
-        stripe_status: "succeeded",
-        payment_clear_owner: "Sam",
-      }),
-    ];
-    for (const item of start) {
-      assert.equal(target.apply(item).status, "applied", item.type);
-    }
-    const blocked = target.apply(
-      event("mark_closed_won", "Sam", {
-        stripe_payment_ref: "pi_test_pay",
-        stripe_livemode: true,
-        stripe_status: "succeeded",
-        closed_won_commercial_ref: "CW-PAY-1",
-        payment_mode: "live",
-        founder_stripe_live_unlock: true,
-        founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
-        payment_clear_owner: "Sam",
-      }),
-    );
-    assert.equal(blocked.status, "rejected");
-    assert.match(blocked.reason ?? "", /payments blocked in TEST/);
-    const founding = target.apply(
+    assert.equal(resolveMode(target.permissions), "TEST");
+    walkToPaymentVerified(target);
+    const spoofed = target.apply(
       event("mark_closed_won", "Sam", {
         stripe_payment_ref: "pi_test_pay",
         stripe_livemode: true,
@@ -261,9 +265,100 @@ describe("continuous learning and permissions", () => {
         payment_clear_owner: "Sam",
       }),
     );
+    assert.equal(spoofed.status, "rejected");
+    assert.match(spoofed.reason ?? "", /payments blocked in TEST/);
+    assert.equal(target.permissions.currentMode, "TEST");
+    assert.equal(loadPermissions().currentMode, "TEST");
+  });
+
+  it("applies CONTROLLED_BETA Closed Won only via an injected trusted registry", () => {
+    const trusted = withTrustedMode(loadPermissions(), "CONTROLLED_BETA");
+    assert.equal(loadPermissions().currentMode, "TEST");
+    assert.equal(trusted.currentMode, "CONTROLLED_BETA");
+    const target = engine(trusted);
+    walkToPaymentVerified(target);
+    const founding = target.apply(
+      event("mark_closed_won", "Sam", {
+        stripe_payment_ref: "pi_test_pay",
+        stripe_livemode: true,
+        stripe_status: "succeeded",
+        closed_won_commercial_ref: "CW-PAY-1",
+        payment_mode: "live",
+        founder_stripe_live_unlock: true,
+        founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+        payment_clear_owner: "Sam",
+      }),
+    );
     assert.equal(founding.status, "applied", founding.reason);
     assert.equal(founding.externalWrite, false);
     assert.equal(founding.dryRun, true);
+    assert.equal(target.permissions.currentMode, "CONTROLLED_BETA");
+    assert.equal(loadPermissions().currentMode, "TEST");
+  });
+
+  it("applies refunds/credits only under trusted mode, never event operating_mode", () => {
+    const testEngine = engine();
+    testEngine.state.current = "cancellation_requested";
+    testEngine.state.tracks.commercial = "cancellation_requested";
+    const spoofedRefund = testEngine.apply(
+      event("founder_refund_credit_decision", "Founder", {
+        cancellation_reason_code: "client_request",
+        founder_refund_credit_decision: "refund_approved",
+        founder_decision_ref: "FD-REF-SPOOF",
+        operating_mode: "CONTROLLED_BETA",
+      }),
+    );
+    assert.equal(spoofedRefund.status, "rejected");
+    assert.match(spoofedRefund.reason ?? "", /refunds_credits blocked in TEST/);
+
+    const trusted = withTrustedMode(loadPermissions(), "CONTROLLED_BETA");
+    const beta = engine(trusted);
+    walkToPaymentVerified(beta);
+    assert.equal(
+      beta.apply(
+        event("mark_closed_won", "Sam", {
+          stripe_payment_ref: "pi_test_pay",
+          stripe_livemode: true,
+          stripe_status: "succeeded",
+          closed_won_commercial_ref: "CW-PAY-1",
+          payment_mode: "live",
+          founder_stripe_live_unlock: true,
+          founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
+          payment_clear_owner: "Sam",
+        }),
+      ).status,
+      "applied",
+    );
+    assert.equal(
+      beta.apply(
+        event("start_onboarding", "Jordan", {
+          closed_won_commercial_ref: "CW-PAY-1",
+          onboarding_pack_version: "ob-v1",
+        }),
+      ).status,
+      "applied",
+    );
+    assert.equal(
+      beta.apply(
+        event("request_cancellation", "Jordan", {
+          closed_won_commercial_ref: "CW-PAY-1",
+          cancellation_reason_code: "client_request",
+        }),
+      ).status,
+      "applied",
+    );
+    const refund = beta.apply(
+      event("founder_refund_credit_decision", "Founder", {
+        cancellation_reason_code: "client_request",
+        founder_refund_credit_decision: "refund_approved",
+        founder_decision_ref: "FD-REF-TRUSTED",
+      }),
+    );
+    assert.equal(refund.status, "applied", refund.reason);
+    assert.equal(refund.founderGate, true);
+    assert.equal(refund.externalWrite, false);
+    assert.equal(beta.permissions.currentMode, "CONTROLLED_BETA");
+    assert.equal(loadPermissions().currentMode, "TEST");
   });
 
   it("wakes the owner/worker and keeps founder gates human", () => {

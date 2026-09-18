@@ -10,7 +10,7 @@
     "autonomous-within-boundaries",
     "managed-by-exception"
   ],
-  "note": "Founder unlocks are recorded as Drive decision titles + env placeholders only. Agents cannot promote mode or self-modify policy. CONTROLLED_BETA can accept paying founding clients after an explicit separate founder Stripe-live/payment unlock; that unlock does not promote the whole business to LIVE.",
+  "note": "currentMode is the only trusted operating mode. Event evidence cannot select or promote mode. Founder unlocks are Drive decision titles + env placeholders only. Agents cannot promote mode or self-modify policy. CONTROLLED_BETA can accept paying founding clients after an explicit separate founder Stripe-live/payment unlock; that unlock does not promote the whole business to LIVE.",
   "unlocks": [
     {
       "id": "payments",

@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { event, happyPathToReady, SHARED } from "../src/events.ts";
-import { loadLifecycle, StateEngine } from "../src/engine/state-engine.ts";
+import { emptyState, loadLifecycle, StateEngine } from "../src/engine/state-engine.ts";
+import { loadPermissions, withTrustedMode } from "../src/permissions.ts";
 import type { BusinessEvent, EvidenceMap } from "../src/types.ts";
+import type { PermissionRegistry } from "../src/permissions.ts";
 
-function engine() {
-  return new StateEngine(loadLifecycle());
+function engine(permissions?: PermissionRegistry) {
+  const model = loadLifecycle();
+  return new StateEngine(model, emptyState(model), permissions ?? loadPermissions());
+}
+
+function controlledBetaEngine() {
+  return engine(withTrustedMode(loadPermissions(), "CONTROLLED_BETA"));
 }
 
 function mustApply(target: StateEngine, events: BusinessEvent[]) {
@@ -20,7 +27,6 @@ function liveWonEvidence(): EvidenceMap {
     ...SHARED,
     stripe_livemode: true,
     payment_mode: "live",
-    operating_mode: "CONTROLLED_BETA",
     founder_stripe_live_unlock: true,
     founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
     payment_clear_owner: "Sam",
@@ -40,7 +46,6 @@ function toClosedWon(target: StateEngine) {
       stripe_status: "succeeded",
       closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
       payment_mode: "live",
-      operating_mode: "CONTROLLED_BETA",
       founder_stripe_live_unlock: true,
       founder_payment_unlock_ref: "FD-STRIPE-LIVE-CONTROLLED-BETA",
       payment_clear_owner: "Sam",
@@ -83,7 +88,7 @@ describe("fail-closed guards", () => {
   });
 
   it("blocks screening and Ready without explicit health consent", () => {
-    const target = engine();
+    const target = controlledBetaEngine();
     toScreeningReadyPath(target);
     const noConsent = target.apply(
       event("record_explicit_health_consent", "Jordan", {
@@ -113,7 +118,7 @@ describe("fail-closed guards", () => {
   });
 
   it("rejects Ready that bypasses human evidence", () => {
-    const target = engine();
+    const target = controlledBetaEngine();
     toScreeningReadyPath(target);
     mustApply(target, [
       event("record_explicit_health_consent", "Jordan", {
@@ -139,7 +144,7 @@ describe("fail-closed guards", () => {
   });
 
   it("blocks programme assignment without founder approval", () => {
-    const target = engine();
+    const target = controlledBetaEngine();
     toScreeningReadyPath(target);
     mustApply(target, [
       event("record_explicit_health_consent", "Jordan", {
@@ -214,8 +219,8 @@ describe("fail-closed guards", () => {
     assert.equal(mismatched.status, "rejected");
   });
 
-  it("routes cancellation refund/credit to founder", () => {
-    const target = engine();
+  it("routes cancellation refund/credit to founder under a trusted CONTROLLED_BETA registry", () => {
+    const target = controlledBetaEngine();
     toClosedWon(target);
     mustApply(target, [
       event("start_onboarding", "Jordan", {
@@ -243,7 +248,6 @@ describe("fail-closed guards", () => {
         founder_refund_credit_decision: "refund_approved",
         founder_decision_ref: "FD-REF-AUTO",
         closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
-        operating_mode: "CONTROLLED_BETA",
         automatic_refund: true,
       }),
     );
@@ -256,7 +260,6 @@ describe("fail-closed guards", () => {
         founder_refund_credit_decision: "refund_approved",
         founder_decision_ref: "FD-REF-1",
         closed_won_commercial_ref: SHARED.closed_won_commercial_ref,
-        operating_mode: "CONTROLLED_BETA",
       }),
     );
     assert.equal(founder.status, "applied");

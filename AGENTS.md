@@ -52,7 +52,7 @@ Sales (conversations/objections/conversions), coaching (adherence/check-ins/prog
 
 Weekly marketing cycle: analyse → generate → produce → QA → TAYLOR PASS → CHATGPT PASS → Metricool schedule → monitor → next-cycle learning.
 
-Operating mode registry: `model/permissions.json` (`TEST` now, beta target 25 Sep 2026). `CONTROLLED_BETA` can accept paying founding clients after a **named founder Stripe-live/payment unlock**; that does not promote the whole business to LIVE. Sam owns `payment_clear`. Refunds/credits may be founder-authorised per case in CONTROLLED_BETA or LIVE — never automatic.
+Operating mode registry: `model/permissions.json` (`currentMode` is `TEST`; beta target 25 Sep 2026). Agents and event payloads cannot promote mode. Isolated tests may inject a trusted registry/mode; `evidence.operating_mode` is ignored. `CONTROLLED_BETA` can accept paying founding clients after a **named founder Stripe-live/payment unlock**; that does not promote the whole business to LIVE. Sam owns `payment_clear`. Refunds/credits may be founder-authorised per case in CONTROLLED_BETA or LIVE — never automatic.
 
 ## Exact safety gates
 

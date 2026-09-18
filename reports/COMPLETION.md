@@ -10,7 +10,7 @@ As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 —
 | --- | --- |
 | `npm ci` | pass |
 | `npm run build` | pass |
-| `npm test` | pass (24/24), including the required negative cases plus learning/permission and CONTROLLED_BETA payment-unlock tests |
+| `npm test` | pass (26/26), including trusted-mode proofs: event `operating_mode` cannot bypass TEST; CONTROLLED_BETA Closed Won only via an injected trusted registry; refunds/credits follow the same rule |
 | `npm run validate` | pass — 44 states, 57 transitions, all required fields present |
 | `npm run benchmark:social` | pass — local files only |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |
@@ -35,8 +35,9 @@ Storyboard JSON + three scene JPEGs are the deterministic video-equivalent if H.
 - Parallel tracks: commercial, marketing_cycle, learning (learning does not consume commercial state)
 - Permission registry `model/permissions.json`: mode `TEST`, beta target 25 Sep 2026
 - Payments `allowedIn` CONTROLLED_BETA and LIVE only with named founder Stripe-live unlock; TEST blocked; Sam owns payment_clear; whole-business LIVE not required
-- Refunds/credits `allowedIn` CONTROLLED_BETA and LIVE as per-case human founder decisions; never automatic
-- Happy path + fail-closed negatives + learning/self-modify + TEST schedule block + CONTROLLED_BETA payment unlock tests in `test/`
+- Operating mode is trusted-registry only; `evidence.operating_mode` cannot bypass TEST
+- Refunds/credits `allowedIn` CONTROLLED_BETA and LIVE as per-case human founder decisions; never automatic; same trusted-mode rule
+- Happy path + fail-closed negatives + learning/self-modify + TEST schedule block + CONTROLLED_BETA payment unlock + trusted-mode (no event promotion) tests in `test/`
 
 ## Live-integration gaps
 

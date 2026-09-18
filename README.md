@@ -51,7 +51,7 @@ Publication requires TAYLOR PASS and CHATGPT PASS on the exact final checksum an
 - Stripe evidence is fixture/dry-run only; this task performs no live activation
 - Ready, founder go-live, refund/credit, and publication stay human-gated
 - Slack command bus is specified, not connected
-- Operating mode in this repo is `TEST`. `CONTROLLED_BETA` may accept paying founding clients after a named founder Stripe-live unlock without promoting the whole business to LIVE (`model/permissions.json`)
+- Operating mode in this repo is `TEST` from `model/permissions.json` only. Event evidence cannot select or promote mode. Isolated tests may inject a trusted registry. `CONTROLLED_BETA` may accept paying founding clients after a named founder Stripe-live unlock without promoting the whole business to LIVE
 - Learning emits versioned SOP proposals only; agents cannot self-modify Drive policy
 - Social output is benchmark-only: `Busy week? Make the next step obvious.`
 

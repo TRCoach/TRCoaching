@@ -47,10 +47,16 @@ function flag(evidence: EvidenceMap, key: string): boolean {
   return evidence[key] === true || evidence[key] === "true";
 }
 
-export function resolveMode(registry: PermissionRegistry, evidence: EvidenceMap = {}): OperatingMode {
-  const raw = evidence.operating_mode;
-  if (raw === "TEST" || raw === "CONTROLLED_BETA" || raw === "LIVE") return raw;
+export function resolveMode(registry: PermissionRegistry): OperatingMode {
   return registry.currentMode;
+}
+
+/** Isolated tests only. Never accept mode from event evidence. */
+export function withTrustedMode(registry: PermissionRegistry, mode: OperatingMode): PermissionRegistry {
+  if (mode !== "TEST" && mode !== "CONTROLLED_BETA" && mode !== "LIVE") {
+    throw new Error("invalid trusted operating mode");
+  }
+  return { ...registry, currentMode: mode };
 }
 
 export function loadPermissions(path = modelPath("permissions.json")): PermissionRegistry {
@@ -78,7 +84,7 @@ export function permissionAllowed(
     };
   }
   if (capability === "payments") {
-    if (unlock.paymentClearOwner && evidence.payment_clear_owner && evidence.payment_clear_owner !== "Sam") {
+    if (evidence.payment_clear_owner !== "Sam") {
       return { ok: false, reason: "payment_clear must be owned by Sam", unlock };
     }
     if (!flag(evidence, "founder_stripe_live_unlock") || !evidence.founder_payment_unlock_ref) {

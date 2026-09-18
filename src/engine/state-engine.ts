@@ -11,7 +11,12 @@ import type {
   LifecycleModel,
   LifecycleTransition,
 } from "../types.js";
-import { loadPermissions, permissionAllowed, resolveMode } from "../permissions.js";
+import {
+  loadPermissions,
+  permissionAllowed,
+  resolveMode,
+  type PermissionRegistry,
+} from "../permissions.js";
 import { missingEvidence, runGuard } from "./guards.js";
 import { wakeFor } from "./wake.js";
 import type { LifecycleTrack } from "../types.js";
@@ -101,6 +106,7 @@ export class StateEngine {
   constructor(
     readonly model: LifecycleModel,
     public state: ControlState = emptyState(model),
+    readonly permissions: PermissionRegistry = loadPermissions(),
   ) {}
 
   next(): Pick<ApplyResult, "nextOwner" | "nextAction" | "nextTrigger" | "from"> {
@@ -156,9 +162,13 @@ export class StateEngine {
     }
 
     if (transition.requiredPermission) {
-      const registry = loadPermissions();
-      const mode = resolveMode(registry, evidence);
-      const permitted = permissionAllowed(registry, transition.requiredPermission, mode, evidence);
+      const mode = resolveMode(this.permissions);
+      const permitted = permissionAllowed(
+        this.permissions,
+        transition.requiredPermission,
+        mode,
+        evidence,
+      );
       if (!permitted.ok) {
         return reject(event, permitted.reason ?? "permission denied");
       }
