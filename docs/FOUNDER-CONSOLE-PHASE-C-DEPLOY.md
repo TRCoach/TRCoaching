@@ -4,7 +4,7 @@
 
 1. Cloudflare account on the **Free** plan. Do not upgrade to Workers Paid ($5/mo) without a separate founder approval.
 2. `npx wrangler login`
-3. `npx wrangler d1 create tr-founder-console` and paste the real `database_id` into `wrangler.toml`.
+3. `npx wrangler d1 create tr-founder-console` and paste the real `database_id` into `wrangler.toml`. A D1 id is already bound (`f393b2f3-161b-4241-9a70-bdb2fbd3b707`); that is a resource id, not proof of migrate/deploy.
 4. `npx wrangler d1 migrations apply tr-founder-console --remote`
 5. `npm run console:hash-password -- --pbkdf2 '<strong-password>'`
 6. `npx wrangler secret put FOUNDER_SESSION_SECRET`
@@ -23,4 +23,4 @@ GitHub Actions stays secret-free. It builds and tests only. It does not deploy a
 
 ## Status
 
-**Not deployed in this change.** Code and local/Worker-unit tests only.
+**workers.dev deploy was not performed or verified in this change.** Code + local/Worker-unit tests only. A D1 `database_id` in `wrangler.toml` is not a live console.

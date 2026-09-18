@@ -16,13 +16,13 @@ Founder Console Phase C adapts the Phase B Node console onto Cloudflare Workers 
 
 ## Continuity
 
-Implemented in git. Locally verified (unit/HTTP/Worker fake-D1 + ffmpeg social). **Not deployed. Not genuinely connected. Not live-rehearsed.**
+Implemented in git. Locally verified (64/64 tests, validate, console:check, worker:check, ffmpeg social, localhost HTTP acceptance). **workers.dev not deployed / not verified. Not genuinely connected. Not live-rehearsed.** D1 id is bound in `wrangler.toml`; remote migrate/secrets remain founder steps.
 
 ## #ai-ops completion message template
 
 ```
 Grok_Alex: Phase C code complete on cursor/tr-training-control-plane-fcd0.
-Hosting target: Cloudflare Workers Free + D1 Free (workers.dev). Not deployed this task.
+Hosting target: Cloudflare Workers Free + D1 Free (workers.dev). Locally verified 64/64. Not deployed this task.
 OpenAI disabled. Unauthorized writes 0. Payments 0. Publication false. Paid spend false.
-Next: founder Cloudflare login, D1 migrate, secrets, then first Slack rehearsal on #ai-ops.
+Next: wrangler login, D1 migrate, secrets, then first Slack rehearsal on #ai-ops.
 ```

@@ -1,18 +1,19 @@
 # Control-plane completion report
 
 Repo: `TRCoach/TRCoaching`  
-Bounded task: initial control plane + social benchmark + Founder Console Phase A/B + Phase B QA delta.  
+Bounded task: initial control plane + social benchmark + Founder Console Phase A/B + Phase B QA delta + Phase C Workers/D1.  
 As-of Drive pointer: `CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST`.  
-Verified commit: Cloud-reproduced on `cursor/tr-training-control-plane-fcd0`.
+Verified commit: Cloud-reproduced Phase C on `cursor/tr-training-control-plane-fcd0`.
 
 ## Commands (Cloud-reproduced)
 
 | Command | Result |
 | --- | --- |
 | `npm run build` | pass |
-| `npm test` | pass **52/52** (49/49 non-media + 3/3 ffmpeg social) |
+| `npm test` | pass **64/64** (52 Phase B preserved + 12 Phase C; includes 3/3 ffmpeg social) |
 | `npm run validate` | pass — 44 states, 57 transitions, 17 founder actions |
 | `npm run console:check` | pass — TEST, 17 actions, unauthenticated blocked, zero writes |
+| `npm run worker:check` | pass |
 | `npm run benchmark:social` | pass — local files only, `publication_occurred=false` |
 | `npm run qa:social` | pass — `publishEligible=false`, `publication_occurred=false` |
 
@@ -50,10 +51,10 @@ Storyboard JSON + three scene JPEGs are the deterministic video-equivalent if H.
 - Superset: dry-run delivery codes; no Zone C on the bus
 - Slack: `Grok_Alex:` OPS_EVENT/OPS_STATUS contract; live posts off by default
 - Cursor Cloud Agents API v1 is wired and remains NOT_CONNECTED without a server-only key
-- OpenAI Responses is wired; spend disabled without `FOUNDER_CHATGPT_DISPATCH=1` + key + model
+- OpenAI Responses stays **disabled / NOT_CONNECTED** in Phase C (`FOUNDER_OPENAI_DISABLED=1`). No key used, no spend.
 - Mode promotion to CONTROLLED_BETA/LIVE is a founder unlock, not an agent action
 - Learning cannot apply policy; Drive remains the SOP/policy source of truth
-- Store is single-process atomic JSON only; no public deployment; no provider credentials connected
+- Hosted store is D1 (Workers Free); local JSON remains for dev/tests. workers.dev is **not deployed** in this verification. No provider credentials connected.
 
 ## Zero live side effects
 
