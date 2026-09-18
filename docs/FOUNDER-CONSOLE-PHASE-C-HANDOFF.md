@@ -14,9 +14,9 @@ Founder Console Phase C adapts the Phase B Node console onto Cloudflare Workers 
 4. Slack rehearsal first, Cursor rehearsal second. No arbitrary Slack. Cursor `autoCreatePR=false`.
 5. Do not deploy publicly. Do not buy Workers Paid without a new founder approval.
 
-## Continuity
+## Continuity update — 18 September 2026
 
-Implemented in git. Locally verified (64/64 tests, validate, console:check, worker:check, ffmpeg social, localhost HTTP acceptance). **workers.dev not deployed / not verified. Not genuinely connected. Not live-rehearsed.** D1 id is bound in `wrangler.toml`; remote migrate/secrets remain founder steps.
+The workers.dev PWA and D1 were subsequently deployed. Slack outbound was live-rehearsed, and a matching `OPS_STATUS` was returned in the event thread. The interactive control-surface delta fixes thread collection and adds sender allowlisting. See `FOUNDER-CONSOLE-INTERACTIVE-HANDOFF.md` for the current truth and remaining credential blockers.
 
 ## #ai-ops completion message template
 
