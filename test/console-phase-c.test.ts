@@ -147,6 +147,51 @@ describe("founder console phase C adapters and gates", () => {
 });
 
 describe("founder console phase C rehearsals", () => {
+  it("reads threaded OPS_STATUS only from an allowlisted Slack sender", async () => {
+    const eventId = "evt_threaded_status";
+    const correlationId = "corr_threaded_status";
+    const statusText = [
+      "Grok_Alex: OPS_STATUS",
+      `event_id=${eventId}`,
+      `correlation_id=${correlationId}`,
+      "status=COMPLETED",
+      "executor=Slack",
+      "detail=approved threaded return",
+    ].join("\n");
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes("conversations.history")) {
+        return new Response(JSON.stringify({ ok: true, messages: [{ ts: "200.2", user: "U_SPOOF", text: statusText }] }));
+      }
+      return new Response(JSON.stringify({
+        ok: true,
+        messages: [
+          { ts: "100.1", bot_id: "B_CONSOLE", text: "Grok_Alex: OPS_EVENT" },
+          { ts: "100.2", user: "U_APPROVED", text: statusText },
+        ],
+      }));
+    };
+    const transport = new LiveSlackTransport("xoxb-test", "C0C2B0TFN48", true, "U_APPROVED", fetchImpl);
+    const collected = await transport.collect([{
+      id: eventId,
+      correlationId,
+      title: "Threaded return",
+      owner: "Alex",
+      executor: "Slack",
+      status: "AWAITING_EXTERNAL",
+      boundedAction: "slack_grok_rehearsal",
+      evidenceRefs: [],
+      resultSummary: "posted",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      externalId: "100.1",
+      founderGate: false,
+    }]);
+    assert.equal(collected.statuses.length, 1);
+    assert.equal(collected.statuses[0]?.detail, "approved threaded return");
+    assert.ok(collected.rejected.some((item) => /not allowlisted/.test(item.reason)));
+  });
+
   it("emits one Slack OPS_EVENT and accepts only a matching idempotent OPS_STATUS", async () => {
     const slack = new MemorySlackTransport();
     const store = new MemoryStore();
@@ -341,7 +386,7 @@ describe("founder console phase C worker and HTTP", () => {
       assert.equal(manifest.display, "standalone");
       assert.equal(manifest.background_color, "#0b0d10");
       const sw = await (await fetch(`${started.url}/sw.js`)).text();
-      assert.match(sw, /tr-founder-console-test-v3/);
+      assert.match(sw, /tr-founder-console-test-v4/);
       const css = await (await fetch(`${started.url}/styles.css`)).text();
       assert.match(css, /\[hidden\]/);
       assert.match(css, /minmax\(0, 1fr\)/);
@@ -383,6 +428,7 @@ describe("founder console phase C static acceptance", () => {
     const css = readFileSync("console/public/styles.css", "utf8");
     assert.match(html, /Windows Edge\/Chrome/);
     assert.match(html, /iOS Safari/);
+    assert.match(html, /Prepare next week’s social media/);
     assert.match(css, /minmax/);
     assert.equal(/sk_live|rk_live|OPENAI_API_KEY=sk-/.test(html), false);
     const wrangler = readFileSync("wrangler.toml", "utf8");

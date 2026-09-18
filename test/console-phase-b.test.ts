@@ -138,6 +138,50 @@ describe("founder console phase B", () => {
     }
   });
 
+  it("persists auditable founder interactions on every lane card", () => {
+    const store = new MemoryStore();
+    const service = new ConsoleService(loadPermissions(), { store });
+    const noted = service.laneAction("publication_errors", "PUBERR-CONSOLE-001", "add_instruction", "Use the corrected exact-final asset and return evidence.");
+    assert.equal(noted.ok, true);
+    const requested = service.laneAction("publication_errors", "PUBERR-CONSOLE-001", "request_evidence", "Return provider and checksum evidence.");
+    assert.equal(requested.ok, true);
+    const unsafeResolve = service.laneAction("publication_errors", "PUBERR-CONSOLE-001", "resolve", "done");
+    assert.equal(unsafeResolve.ok, false);
+    const restarted = new ConsoleService(loadPermissions(), { store });
+    const detail = restarted.detail("lane", "publication_errors");
+    assert.ok(detail.items?.[0]?.auditHistory?.some((row) => row.type === "lane_instruction"));
+    assert.equal(detail.items?.[0]?.controls.canAcknowledge, true);
+    assert.equal(detail.items?.[0]?.controls.canResolve, false);
+    assert.ok(store.load().audits.length >= 3);
+  });
+
+  it("builds a truthful dependency-aware next-week social workflow", async () => {
+    const verified = collectEvidence({ demoFixtures: false }).map((card) =>
+      ["drive", "metricool", "crm"].includes(card.id)
+        ? {
+            ...card,
+            freshness: "VERIFIED" as const,
+            lastVerified: new Date().toISOString(),
+            evidenceRef:
+              card.id === "drive"
+                ? "approved_marketing_offer_sop_content"
+                : card.id === "metricool"
+                  ? "metricool_performance_queue"
+                  : "safe_sales_faq_aggregate",
+          }
+        : card,
+    );
+    const service = new ConsoleService(loadPermissions(), { evidence: verified });
+    const summary = await service.prepareNextWeeksSocial();
+    assert.equal(summary.decomposition.length, 10);
+    assert.ok(summary.progressed.some((job) => job.boundedAction === "build_next_week_content_plan"));
+    assert.ok(summary.blocked.some((job) => job.boundedAction === "produce_next_week_social_assets"));
+    assert.ok(summary.blocked.some((job) => /dual PASS|Taylor PASS/i.test(job.resultSummary)));
+    assert.ok(summary.decomposition.some((step) => step.evidenceRefs.includes("tiktok_photo_jpeg_or_webp_not_png")));
+    assert.ok(summary.decomposition.some((step) => step.evidenceRefs.includes("no_text_overlap")));
+    assert.equal(summary.unauthorizedWrites, 0);
+  });
+
   it("expires sessions and rate-limits login", async () => {
     const store = new MemoryStore();
     const auth = new FounderAuth(store, FounderAuth.testing());
