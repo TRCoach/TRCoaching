@@ -1,0 +1,978 @@
+{
+  "week": {
+    "start": "2026-09-21",
+    "end": "2026-09-27",
+    "timezone": "Europe/London",
+    "id": "week:2026-09-21/2026-09-27"
+  },
+  "copy": {
+    "headline": "Busy week?",
+    "body": "Make the next step obvious.",
+    "disclaimer": "TEST DRY-RUN — not specialist-approved"
+  },
+  "treatments": [
+    {
+      "id": "t1_static",
+      "format": "photo",
+      "config_id": "week-2026-09-21-t1-static",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ]
+    },
+    {
+      "id": "t2_reel",
+      "format": "reel",
+      "config_id": "week-2026-09-21-t2-reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ]
+    },
+    {
+      "id": "t3_alt",
+      "format": "photo",
+      "config_id": "week-2026-09-21-t3-alt",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ]
+    }
+  ],
+  "slots": [
+    {
+      "slot_id": "in-2026-09-21-0800",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-21-1300",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-21-1900",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-21-1000",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-21-1200",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-21-1800",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-21-1000",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-21-1200",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-21-1800",
+      "date": "2026-09-21",
+      "weekday": "Monday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-22-0800",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-22-1300",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-22-1900",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-22-1000",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-22-1200",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-22-1800",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-22-1000",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-22-1200",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-22-1800",
+      "date": "2026-09-22",
+      "weekday": "Tuesday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-23-0800",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-23-1300",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-23-1900",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-23-1000",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-23-1200",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-23-1800",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-23-1000",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-23-1200",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-23-1800",
+      "date": "2026-09-23",
+      "weekday": "Wednesday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-24-0800",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-24-1300",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-24-1900",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-24-1000",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-24-1200",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-24-1800",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-24-1000",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-24-1200",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-24-1800",
+      "date": "2026-09-24",
+      "weekday": "Thursday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-25-0800",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-25-1300",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-25-1900",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-25-1000",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-25-1200",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-25-1800",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-25-1000",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-25-1200",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-25-1800",
+      "date": "2026-09-25",
+      "weekday": "Friday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-26-0800",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-26-1300",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-26-1900",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-26-1000",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-26-1200",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-26-1800",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-26-1000",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-26-1200",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-26-1800",
+      "date": "2026-09-26",
+      "weekday": "Saturday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-27-0800",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "instagram",
+      "local_time": "08:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-27-1300",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "instagram",
+      "local_time": "13:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "in-2026-09-27-1900",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "instagram",
+      "local_time": "19:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-27-1000",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "facebook",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-27-1200",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "facebook",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "fa-2026-09-27-1800",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "facebook",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-27-1000",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "tiktok",
+      "local_time": "10:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t1_static",
+      "format": "photo",
+      "asset_ids": [
+        "t1_static_feed_jpg",
+        "t1_static_feed_webp"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-27-1200",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "tiktok",
+      "local_time": "12:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t2_reel",
+      "format": "reel",
+      "asset_ids": [
+        "t2_reel_mp4"
+      ],
+      "audio": "none"
+    },
+    {
+      "slot_id": "ti-2026-09-27-1800",
+      "date": "2026-09-27",
+      "weekday": "Sunday",
+      "platform": "tiktok",
+      "local_time": "18:00",
+      "timezone": "Europe/London",
+      "treatment_id": "t3_alt",
+      "format": "photo",
+      "asset_ids": [
+        "t3_alt_feed_jpg",
+        "t3_alt_feed_webp"
+      ],
+      "audio": "none"
+    }
+  ],
+  "provenance": {
+    "generator": "tr-control-plane/social-week",
+    "source": "code",
+    "external_media": false,
+    "paid_assets": false,
+    "music": false,
+    "policy_titles_only": [
+      "CURRENT STATE & PROJECT CONTINUITY LOG — 18 Sep 2026 — 12:36 BST",
+      "AI Coaching Company — Operating System (Master)"
+    ]
+  }
+}

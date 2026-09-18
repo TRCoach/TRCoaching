@@ -1,0 +1,44 @@
+{
+  "kind": "deterministic_storyboard",
+  "config_id": "week-2026-09-21-t2-reel",
+  "copy": {
+    "headline": "Busy week?",
+    "body": "Make the next step obvious.",
+    "disclaimer": "TEST DRY-RUN — not specialist-approved"
+  },
+  "frames": [
+    {
+      "index": 0,
+      "file": "t2-reel-scene-01.jpg",
+      "duration_seconds": 1,
+      "label": "REEL 01"
+    },
+    {
+      "index": 1,
+      "file": "t2-reel-scene-02.jpg",
+      "duration_seconds": 1,
+      "label": "REEL 02"
+    },
+    {
+      "index": 2,
+      "file": "t2-reel-scene-03.jpg",
+      "duration_seconds": 1,
+      "label": "REEL 03"
+    }
+  ],
+  "video": {
+    "file": "t2-reel.mp4",
+    "width": 1080,
+    "height": 1920,
+    "codec": "h264",
+    "audio": "none",
+    "note": "H.264 checksums may vary across ffmpeg builds; storyboard JSON and source frames are the deterministic video-equivalent."
+  },
+  "provenance": {
+    "generator": "tr-control-plane/social-render",
+    "source": "code",
+    "external_media": false,
+    "paid_assets": false,
+    "music": false
+  }
+}
